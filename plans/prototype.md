@@ -4,7 +4,7 @@ This document outlines the initial tasks to get Retort, an AI pair programmer, f
 
 ## Core Principles & Design Considerations
 
-*   **Session Management:** Ability to specify a session as the starting point for any action. Session state (message history, read-only files, read-write files, model sent) will be stored in SQLite.
+*   **Stateless Session Management:** The CLI application will be stateless between invocations. All state required to reconstruct a session (message history, read-only files, read-write files, model sent) will be persisted in and loaded from the SQLite database. This allows users to specify a session as the starting point for any action.
 *   **Configuration:** A config file will allow specifying the SQLite database location, with a default of `~/.retort/data/retort.db`.
 *   **CLI First:** No UI initially; all interactions will be via the command-line interface (CLI) with flags for messages to the LLM.
 *   **Output & Application:** LLM responses will be streamed to stdout, processed for fenced code changes, and applied to the codebase. Initial application will use Git, followed by Jujutsu (jj).
@@ -51,7 +51,8 @@ Develop the mechanism for constructing LLM prompts.
 Connect to LLMs, send prompts, and process their responses.
 
 *   **LLM Client Library:** Develop a Rust client library for interacting with Google's Gemini API (Pro, Flash, Flash-lite). This will be our main test LLM.
-*   **API Key Management:** Securely handle API keys for LLM access (e.g., environment variables).
+*   **API Key Management:** Securely handle API keys for LLM access by reading from environment variables. The application should be able to refresh its environment variables without a restart.
+*   **Model Configuration & Aliasing:** Implement a system for managing LLM parameters, inspired by Aider's model metadata and settings files. Allow users to define model aliases in the configuration (e.g., `gemini-flash-nothink`, `gemini-flash-autothink`) that map to specific model names and parameter sets (e.g., temperature, thinking tokens).
 *   **Streaming Output:** Implement functionality to stream responses from the LLM to stdout as they are received.
 *   **Response Parser (Hook):** Develop a parser hook to identify and extract fenced code blocks (` ``` `) from the LLM's streamed response.
 *   **Change Storage:** The parser will store the parsed changes (file paths, content) in the database, linked to the current session/message.
