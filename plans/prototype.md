@@ -21,8 +21,8 @@ This document outlines the initial tasks to get Retort, an AI pair programmer, f
 The primary goal here is to establish the CLI entry point and reflect user input, allowing for a basic interaction loop.
 
 *   **Select Rust CLI Tooling:** Choose a reliable Rust library for building command-line interfaces (e.g., `clap`).
-*   **Initial CLI Command:** Implement a basic command structure, e.g., `rt -m "Your message here"`.
-*   **Message Reflection:** For the very first iteration, simply echo the `-m` message back to stdout. This validates the CLI setup.
+*   **Initial CLI Command:** Implement a basic command structure, e.g., `rt -p "Your prompt here"`. This will be a direct pass-through to the model, skipping the prompt builder.
+*   **Message Reflection:** For the very first iteration, simply echo the `-p` prompt back to stdout. This validates the CLI setup.
 *   **Config File Setup:** Implement basic reading of a configuration file (e.g., `serde` for TOML/YAML) to define the default SQLite database path (`~/.retort/data/retort.db`) and allow overrides.
 
 ### Phase 2: Session Management & Database Integration
