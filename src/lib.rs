@@ -122,7 +122,7 @@ pub fn run() -> anyhow::Result<()> {
         }
     } else if cli.prompt_args.list_chats {
         let leaves = db::get_leaf_messages(&conn)?;
-        println!("{:<5} {:<20} {}", "ID", "Tag", "Last User Message");
+        println!("{:<5} {:<20} Last User Message", "ID", "Tag");
         println!("{:-<5} {:-<20} {:-<70}", "", "", "");
         for leaf in leaves {
             let history = db::get_conversation_history(&conn, leaf.id)?;
