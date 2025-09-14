@@ -78,13 +78,17 @@ fn test_history_command() -> Result<()> {
     let mut cmd = Command::cargo_bin("retort")?;
     cmd.arg("-h").arg("chat1").env("HOME", home_dir);
     let expected = "[user]\nUser message 1\n---\n[assistant]\nAssistant message 1\n";
-    cmd.assert().success().stdout(predicate::str::diff(expected));
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::diff(expected));
 
     // Test 2: history by ID (for a message that is a leaf)
     let mut cmd = Command::cargo_bin("retort")?;
     cmd.arg("-h").arg("2").env("HOME", home_dir);
     let expected = "[user]\nUser message 1\n---\n[assistant]\nAssistant message 1\n";
-    cmd.assert().success().stdout(predicate::str::diff(expected));
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::diff(expected));
 
     // Test 3: history with active tag
     let mut cmd = Command::cargo_bin("retort")?;
@@ -97,7 +101,9 @@ fn test_history_command() -> Result<()> {
     let mut cmd = Command::cargo_bin("retort")?;
     cmd.arg("-h").env("HOME", home_dir);
     let expected = "[user]\nUser message 1\n---\n[assistant]\nAssistant message 1\n";
-    cmd.assert().success().stdout(predicate::str::diff(expected));
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::diff(expected));
 
     // Test 4: nonexistent tag
     let mut cmd = Command::cargo_bin("retort")?;

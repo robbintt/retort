@@ -91,7 +91,9 @@ pub fn run() -> anyhow::Result<()> {
             // Case: retort -h
             None => {
                 let active_tag = db::get_active_chat_tag(&conn)?.ok_or_else(|| {
-                    anyhow::anyhow!("No active chat tag set. Use `retort profile --active-chat <tag>`.")
+                    anyhow::anyhow!(
+                        "No active chat tag set. Use `retort profile --active-chat <tag>`."
+                    )
                 })?;
                 db::get_message_id_by_tag(&conn, &active_tag)?.ok_or_else(|| {
                     anyhow::anyhow!(
