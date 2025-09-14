@@ -1,0 +1,29 @@
+{#
+  This file contains prompt templates derived from the Aider project.
+  The original work is Copyright 2023-2025 Paul Gauthier.
+
+  The original source is licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUTHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+
+  Modifications from the original:
+  - Prompt strings were extracted from Aider's Python source code.
+  - The strings have been reorganized into this Jinja2 template hierarchy.
+#}
+
+Just suggest shell commands this way, not example code.
+Only suggest complete shell commands that are ready to execute, without placeholders.
+Only suggest at most a few shell commands at a time, not more than 1-3, one per line.
+Do not suggest multi-line shell commands.
+All shell commands will run from the root directory of the user's project.
+
+Use the appropriate shell based on the user's system info:
+{{ platform }}

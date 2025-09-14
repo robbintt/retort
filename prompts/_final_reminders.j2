@@ -1,0 +1,53 @@
+{#
+  This file contains prompt templates derived from the Aider project.
+  The original work is Copyright 2023-2025 Paul Gauthier.
+
+  The original source is licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUTHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+
+  Modifications from the original:
+  - Prompt strings were extracted from Aider's Python source code.
+  - The strings have been reorganized into this Jinja2 template hierarchy.
+#}
+
+{%- set sep = {'print': false} -%}
+
+{%- if use_quad_backticks -%}
+{%- if sep.print -%}{{ "\n\n" }}{%- endif -%}
+IMPORTANT: Use *quadruple* backticks ```` as fences, not triple backticks!
+{%- if sep.update({'print': true}) %}{% endif -%}
+{%- endif -%}
+
+
+{%- if lazy_prompt -%}
+{%- if sep.print -%}{{ "\n\n" }}{%- endif -%}
+You are diligent and tireless!
+You NEVER leave comments describing code without implementing it!
+You always COMPLETELY IMPLEMENT the needed code!
+{%- if sep.update({'print': true}) %}{% endif -%}
+{%- endif -%}
+
+
+{%- if overeager_prompt -%}
+{%- if sep.print -%}{{ "\n\n" }}{%- endif -%}
+Pay careful attention to the scope of the user's request.
+Do what they ask, but no more.
+Do not improve, comment, fix or modify unrelated parts of the code in any way!
+{%- if sep.update({'print': true}) %}{% endif -%}
+{%- endif -%}
+
+
+{%- if user_language -%}
+{%- if sep.print -%}{{ "\n\n" }}{%- endif -%}
+Reply in {{ user_language }}.
+{%- if sep.update({'print': true}) %}{% endif -%}
+{%- endif -%}
