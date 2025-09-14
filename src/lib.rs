@@ -80,10 +80,7 @@ pub fn run() -> anyhow::Result<()> {
             let tag_display = leaf.tag.as_deref().unwrap_or("-");
 
             // Produces a clean, column-based output that is easy to parse with standard tools.
-            println!(
-                "{:<5} {:<20} {}",
-                leaf.id, tag_display, one_line_content
-            );
+            println!("{:<5} {:<20} {}", leaf.id, tag_display, one_line_content);
         }
     } else if let Some(prompt) = cli.prompt_args.prompt {
         // Determine chat tag to use for this operation.

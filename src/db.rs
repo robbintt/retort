@@ -94,10 +94,7 @@ pub fn get_leaf_messages(conn: &Connection) -> Result<Vec<Leaf>> {
     Ok(messages)
 }
 
-pub fn get_conversation_history(
-    conn: &Connection,
-    leaf_id: i64,
-) -> Result<Vec<HistoryMessage>> {
+pub fn get_conversation_history(conn: &Connection, leaf_id: i64) -> Result<Vec<HistoryMessage>> {
     let mut stmt = conn.prepare(
         "
         WITH RECURSIVE ancestors AS (
