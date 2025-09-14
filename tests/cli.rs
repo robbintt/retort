@@ -76,7 +76,7 @@ fn test_history_command() -> Result<()> {
 
     // Test 1: history by tag
     let mut cmd = Command::cargo_bin("retort")?;
-    cmd.arg("-h").arg("chat1").env("HOME", home_dir);
+    cmd.arg("-H").arg("chat1").env("HOME", home_dir);
     let expected = "[user]\nUser message 1\n---\n[assistant]\nAssistant message 1\n";
     cmd.assert()
         .success()
@@ -84,7 +84,7 @@ fn test_history_command() -> Result<()> {
 
     // Test 2: history by ID (for a message that is a leaf)
     let mut cmd = Command::cargo_bin("retort")?;
-    cmd.arg("-h").arg("2").env("HOME", home_dir);
+    cmd.arg("-H").arg("2").env("HOME", home_dir);
     let expected = "[user]\nUser message 1\n---\n[assistant]\nAssistant message 1\n";
     cmd.assert()
         .success()
@@ -99,7 +99,7 @@ fn test_history_command() -> Result<()> {
     cmd.assert().success();
 
     let mut cmd = Command::cargo_bin("retort")?;
-    cmd.arg("-h").env("HOME", home_dir);
+    cmd.arg("-H").env("HOME", home_dir);
     let expected = "[user]\nUser message 1\n---\n[assistant]\nAssistant message 1\n";
     cmd.assert()
         .success()
@@ -107,14 +107,14 @@ fn test_history_command() -> Result<()> {
 
     // Test 4: nonexistent tag
     let mut cmd = Command::cargo_bin("retort")?;
-    cmd.arg("-h").arg("nonexistent").env("HOME", home_dir);
+    cmd.arg("-H").arg("nonexistent").env("HOME", home_dir);
     cmd.assert()
         .failure()
         .stderr(predicate::str::contains("Tag 'nonexistent' not found."));
 
     // Test 5: nonexistent ID
     let mut cmd = Command::cargo_bin("retort")?;
-    cmd.arg("-h").arg("999").env("HOME", home_dir);
+    cmd.arg("-H").arg("999").env("HOME", home_dir);
     cmd.assert()
         .failure()
         .stderr(predicate::str::contains("Message with ID '999' not found."));

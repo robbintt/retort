@@ -33,7 +33,7 @@ struct PromptArgs {
 
     /// Show the history of a chat by tag or ID.
     /// If no value is provided, it uses the active chat tag.
-    #[arg(short, long, value_name = "TAG_OR_ID", num_args = 0..=1, default_missing_value = None)]
+    #[arg(short = 'H', long, value_name = "TAG_OR_ID", num_args = 0..=1, default_missing_value = None)]
     history: Option<Option<String>>,
 }
 
