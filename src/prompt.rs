@@ -145,3 +145,107 @@ pub fn split_chat_history_markdown(text: &str) -> Vec<Message> {
 
     messages
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::HistoryMessage;
+
+    #[test]
+    fn test_split_chat_history_markdown() {
+        let input = r#"
+## SYSTEM
+
+You are a helpful assistant.
+
+## USER
+
+Hello, world!
+
+## ASSISTANT
+
+Hi there!
+"#;
+        let messages = split_chat_history_markdown(input);
+        assert_eq!(messages.len(), 3);
+        assert_eq!(messages[0].role, "system");
+        assert_eq!(messages[0].content, "You are a helpful assistant.");
+        assert_eq!(messages[1].role, "user");
+        assert_eq!(messages[1].content, "Hello, world!");
+        assert_eq!(messages[2].role, "assistant");
+        assert_eq!(messages[2].content, "Hi there!");
+    }
+
+    #[test]
+    fn test_split_with_invalid_role() {
+        let input = r#"
+Some text before role.
+## USER
+User content.
+## INVALID
+This is not a role.
+It is content.
+## ASSISTANT
+Assistant content.
+"#;
+        let messages = split_chat_history_markdown(input);
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0].role, "user");
+        assert_eq!(
+            messages[0].content,
+            "User content.\n## INVALID\nThis is not a role.\nIt is content."
+        );
+        assert_eq!(messages[1].role, "assistant");
+        assert_eq!(messages[1].content, "Assistant content.");
+    }
+
+    #[test]
+    fn test_split_with_empty_messages() {
+        let input = r#"
+## USER
+
+## ASSISTANT
+Assistant content.
+## SYSTEM
+
+"#;
+        let messages = split_chat_history_markdown(input);
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].role, "assistant");
+        assert_eq!(messages[0].content, "Assistant content.");
+    }
+
+    #[test]
+    fn test_build_prompt() {
+        let done_messages = vec![
+            HistoryMessage {
+                role: "user".to_string(),
+                content: "previous user message".to_string(),
+                created_at: "".to_string(),
+            },
+            HistoryMessage {
+                role: "assistant".to_string(),
+                content: "previous assistant message".to_string(),
+                created_at: "".to_string(),
+            },
+        ];
+        let cur_messages = vec![HistoryMessage {
+            role: "user".to_string(),
+            content: "current user message".to_string(),
+            created_at: "".to_string(),
+        }];
+
+        let prompt = build_prompt(done_messages, cur_messages).unwrap();
+
+        // Check for system prompt
+        assert!(prompt.contains("Act as an expert software developer."));
+        // Check for done messages
+        assert!(prompt.contains("previous user message"));
+        assert!(prompt.contains("previous assistant message"));
+        // Check for current message
+        assert!(prompt.contains("current user message"));
+        // Check for roles
+        assert!(prompt.contains("## USER"));
+        assert!(prompt.contains("## ASSISTANT"));
+    }
+}
