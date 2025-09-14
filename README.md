@@ -71,11 +71,36 @@ By default, Retort will use the active chat tag set on your profile.
 
 ### Listing Chats
 
-To see a list of all current conversations (the latest message in each branch), use the `-l` or `--list-chats` flag.
+To see a list of all current conversations (the latest message in each branch), use the `list` subcommand.
 
 ```bash
-retort -l
+retort list
 ```
+
+### Managing Tags
+
+You can manually tag messages, which is useful for creating bookmarks or giving meaningful names to important conversation points.
+
+#### Setting a Tag
+
+To create a tag or move an existing tag to a new message, use `tag set`.
+
+```bash
+# Tag message ID 1 with 'my-feature'
+retort tag set my-feature -m 1
+```
+
+Tags are unique. If you set a tag that already exists, it will be moved to the new message ID.
+
+#### Deleting a Tag
+
+To delete a tag, use `tag delete`.
+
+```bash
+retort tag delete my-feature
+```
+
+The command will output the message ID that the tag was pointing to, so you can re-tag it if you made a mistake.
 
 ### Viewing Chat History
 
