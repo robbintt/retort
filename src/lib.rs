@@ -33,8 +33,9 @@ pub fn run() -> anyhow::Result<()> {
                 message.id
             );
         }
-    } else if let Some(_prompt) = args.prompt {
-        // TODO: Handle prompt
+    } else if let Some(prompt) = args.prompt {
+        let message_id = db::add_message(&conn, None, "user", &prompt)?;
+        println!("Added message with ID: {}", message_id);
     }
 
     Ok(())
