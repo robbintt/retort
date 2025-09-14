@@ -19,9 +19,11 @@ Based on the need to support branching histories and message editing, the data m
 ## Data Model Requirements
 
 1.  **Messages Table:**
-    *   Continue to store core message data (role, content, timestamp).
-    *   Remove the `session_id` foreign key.
+    *   Stores core message data (role, content, timestamp).
+    *   A nullable `parent_id` column establishes a tree structure. A `NULL` `parent_id` indicates a root message.
+    *   The `session_id` foreign key is removed.
 2.  **Message Linkage:**
-    *   Implement a mechanism to link messages to their parents. A `message_parents` junction table (`message_id`, `parent_id`) is required to support cases where a message may have multiple antecedents. A message can have zero parents (a root message) or one or more parents.
+    *   Each message has at most one parent, forming a tree rather than a more complex graph. This simplifies traversal while still fully supporting branching (a parent can have multiple children).
+    *   Editing a message is handled by creating a new message and thus a new branch, not by creating a convergent graph structure.
 3.  **Files Table:**
-    *   Files should be associated directly with `messages`, not obsolete `sessions`.
+    *   Files are associated directly with `messages`, not obsolete `sessions`.

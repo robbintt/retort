@@ -30,10 +30,9 @@ The primary goal here is to establish the CLI entry point and reflect user input
 Establish the core for state persistence and session handling.
 
 *   **Select Rust SQLite Client:** Choose a robust Rust library for SQLite database interaction (e.g., `rusqlite`).
-*   **Database Schema Design:** Define the initial schema for sessions, messages, read-only files, read-write files, and model information.
-    *   `sessions` table: To store session metadata.
-    *   `messages` table: To store message history, linked to a session.
-    *   `files` table: To store file content (read-only/read-write), linked to a session or message.
+*   **Database Schema Design:** Define the initial schema. Conversations are modeled as a tree of messages.
+    *   `messages` table: Stores each message. A nullable `parent_id` column creates the tree structure. Root messages have a `NULL` parent.
+    *   `files` table: To store file content, linked to a message.
 *   **Session Model:** Create Rust data structures to represent sessions and their associated data.
 *   **Database Interaction Layer:** Implement methods for creating new sessions, adding messages to a session, and retrieving session history.
 *   **CLI-DB Integration:** Modify the CLI to create a new session (if none specified) or load an existing one, and store the initial user message in the database.

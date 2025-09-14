@@ -12,34 +12,26 @@ pub fn setup(db_path_str: &str) -> Result<Connection> {
 
     let conn = Connection::open(db_path)?;
 
-    // From prototype.md:
-    // sessions table: To store session metadata.
-    // messages table: To store message history, linked to a session.
-    // files table: To store file content (read-only/read-write), linked to a session or message.
+    // Conversations are stored as a tree of messages.
     conn.execute_batch(
         "
-        CREATE TABLE IF NOT EXISTS sessions (
-            id INTEGER PRIMARY KEY,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
-        );
-
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY,
-            session_id INTEGER NOT NULL,
+            parent_id INTEGER,
             role TEXT NOT NULL,
             content TEXT NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-            FOREIGN KEY (session_id) REFERENCES sessions (id)
+            FOREIGN KEY (parent_id) REFERENCES messages (id)
         );
 
         CREATE TABLE IF NOT EXISTS files (
             id INTEGER PRIMARY KEY,
-            session_id INTEGER NOT NULL,
+            message_id INTEGER NOT NULL,
             path TEXT NOT NULL,
             content TEXT NOT NULL,
             read_only BOOLEAN NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-            FOREIGN KEY (session_id) REFERENCES sessions (id)
+            FOREIGN KEY (message_id) REFERENCES messages (id)
         );
         ",
     )?;
