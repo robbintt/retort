@@ -20,6 +20,7 @@ fn test_chat_flow() -> Result<()> {
     let leaves = db::get_leaf_messages(&conn)?;
     assert_eq!(leaves.len(), 1);
     assert_eq!(leaves[0].id, root_id);
+    assert_eq!(leaves[0].tag, None);
 
     // 2. Tag the message to track the conversation.
     db::set_chat_tag(&conn, "test-chat", root_id)?;
@@ -33,10 +34,12 @@ fn test_chat_flow() -> Result<()> {
     let child_id = db::add_message(&conn, Some(parent_id), "user", "Tell me more.")?;
     assert_eq!(child_id, 2);
 
-    // The new message should now be the only leaf.
+    // The tag should still point to the old message, which is no longer a leaf.
+    // The new message should be the only leaf, and have no tag.
     let leaves = db::get_leaf_messages(&conn)?;
     assert_eq!(leaves.len(), 1);
     assert_eq!(leaves[0].id, child_id);
+    assert_eq!(leaves[0].tag, None);
 
     // 4. Update the tag to point to the new message.
     db::set_chat_tag(&conn, "test-chat", child_id)?;
@@ -44,6 +47,12 @@ fn test_chat_flow() -> Result<()> {
         db::get_message_id_by_tag(&conn, "test-chat")?.unwrap(),
         child_id
     );
+
+    // Now the leaf should have a tag.
+    let leaves = db::get_leaf_messages(&conn)?;
+    assert_eq!(leaves.len(), 1);
+    assert_eq!(leaves[0].id, child_id);
+    assert_eq!(leaves[0].tag, Some("test-chat".to_string()));
 
     Ok(())
 }

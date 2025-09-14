@@ -68,11 +68,16 @@ pub fn run() -> anyhow::Result<()> {
         let messages = db::get_leaf_messages(&conn)?;
         for message in messages {
             let truncated_content: String = message.content.chars().take(100).collect();
+            let tag_display = message
+                .tag
+                .map(|t| format!(" (Tag: {})", t))
+                .unwrap_or_else(|| "".to_string());
             println!(
-                "[{}] {} (ID: {})",
+                "[{}] {} (ID: {}){}",
                 message.created_at,
                 truncated_content.replace('\n', " "),
-                message.id
+                message.id,
+                tag_display
             );
         }
     } else if let Some(prompt) = cli.prompt_args.prompt {

@@ -58,13 +58,15 @@ pub struct Message {
     pub id: i64,
     pub created_at: String,
     pub content: String,
+    pub tag: Option<String>,
 }
 
 pub fn get_leaf_messages(conn: &Connection) -> Result<Vec<Message>> {
     let mut stmt = conn.prepare(
         "
-        SELECT id, created_at, content
+        SELECT m1.id, m1.created_at, m1.content, ct.tag
         FROM messages m1
+        LEFT JOIN chat_tags ct ON m1.id = ct.message_id
         WHERE NOT EXISTS (SELECT 1 FROM messages m2 WHERE m2.parent_id = m1.id)
         ORDER BY m1.created_at DESC;
         ",
@@ -75,6 +77,7 @@ pub fn get_leaf_messages(conn: &Connection) -> Result<Vec<Message>> {
             id: row.get(0)?,
             created_at: row.get(1)?,
             content: row.get(2)?,
+            tag: row.get(3)?,
         })
     })?;
 
