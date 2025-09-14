@@ -106,7 +106,7 @@ pub fn get_conversation_history(conn: &Connection, leaf_id: i64) -> Result<Vec<H
             FROM messages m
             JOIN ancestors a ON m.id = a.parent_id
         )
-        SELECT role, content, created_at FROM ancestors ORDER BY created_at ASC;
+        SELECT role, content, created_at FROM ancestors ORDER BY created_at ASC, id ASC;
         ",
     )?;
 
