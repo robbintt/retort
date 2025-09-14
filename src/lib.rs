@@ -1,70 +1,14 @@
 use ::llm::chat::ChatMessage;
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use futures::StreamExt;
 use std::io::{stdout, Write};
 
+pub mod cli;
 pub mod config;
 pub mod db;
 pub mod llm;
 
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Cli {
-    #[command(subcommand)]
-    command: Option<Command>,
-
-    /// List all chats
-    #[arg(short, long)]
-    list_chats: bool,
-}
-
-#[derive(Subcommand, Debug)]
-enum Command {
-    /// Manage profiles
-    Profile {
-        /// Set the active chat tag for the default profile
-        #[arg(long)]
-        active_chat: Option<String>,
-    },
-    /// Show the history of a chat
-    History {
-        /// The tag or message ID to show history for. Defaults to the active tag.
-        target: Option<String>,
-
-        /// Explicitly treat the target as a tag
-        #[arg(short, long)]
-        tag: bool,
-
-        /// Explicitly treat the target as a message ID
-        #[arg(short, long)]
-        message: bool,
-    },
-    /// Send a prompt to the model
-    Send {
-        /// The prompt to send
-        prompt: String,
-
-        /// The parent message ID to continue from. Creates a new branch and does not update any tags.
-        #[arg(long, conflicts_with_all = &["new", "chat"])]
-        parent: Option<i64>,
-
-        /// The chat tag to continue from.
-        #[arg(long, conflicts_with = "new")]
-        chat: Option<String>,
-
-        /// Start a new chat, ignoring the active chat tag.
-        #[arg(long)]
-        new: bool,
-
-        /// Stream the response (overrides config).
-        #[arg(long, conflicts_with = "no_stream")]
-        stream: bool,
-
-        /// Do not stream the response (overrides config).
-        #[arg(long)]
-        no_stream: bool,
-    },
-}
+use cli::{Cli, Command};
 
 pub async fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
