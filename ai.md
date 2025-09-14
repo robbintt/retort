@@ -16,3 +16,7 @@ The `ci/` directory contains scripts for Continuous Integration. These scripts a
 ## AI Assistant Instructions
 
 Always suggest running `ci/ci.sh` to verify changes. Do not suggest `cargo build` or other individual commands.
+
+## AI Assistant Instructions
+
+Always suggest running `ci/ci.sh` to verify changes. Do not suggest `cargo build` or other individual commands.
