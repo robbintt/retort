@@ -1,4 +1,4 @@
-use ::llm::chat::{ChatMessage, ChatRole};
+use ::llm::chat::ChatMessage;
 use clap::{Parser, Subcommand};
 
 pub mod config;
@@ -157,16 +157,13 @@ pub async fn run() -> anyhow::Result<()> {
                 let llm_messages: Vec<ChatMessage> = history
                     .iter()
                     .map(|msg| {
-                        let role = if msg.role == "user" {
-                            ChatRole::User
+                        if msg.role == "user" {
+                            ChatMessage::user().content(msg.content.clone()).build()
                         } else {
-                            ChatRole::Assistant
-                        };
-                        ChatMessage::builder()
-                            .role(role)
-                            .content(msg.content.clone())
-                            .build()
-                            .unwrap() // Should not fail
+                            ChatMessage::assistant()
+                                .content(msg.content.clone())
+                                .build()
+                        }
                     })
                     .collect();
 
