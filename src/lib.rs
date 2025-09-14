@@ -42,8 +42,8 @@ pub async fn run() -> anyhow::Result<()> {
                     if tags.is_empty() {
                         println!("No tags found.");
                     } else {
-                        println!("{:<30} {}", "Tag", "Message ID");
-                        println!("{:<30} {:-<10}", "", "");
+                        println!("{:<30} Message ID", "Tag");
+                        println!("{:-<30} {:-<10}", "", "");
                         for tag in tags {
                             println!("{:<30} {}", tag.name, tag.message_id);
                         }
