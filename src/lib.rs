@@ -9,7 +9,7 @@ pub mod db;
 pub mod llm;
 pub mod prompt;
 
-use cli::{Cli, Command};
+use cli::{Cli, Command, TagSubcommand};
 
 pub async fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
@@ -19,6 +19,25 @@ pub async fn run() -> anyhow::Result<()> {
 
     if let Some(command) = cli.command {
         match command {
+            Command::Tag(tag_command) => match tag_command {
+                TagSubcommand::Set { tag, message } => {
+                    if !db::message_exists(&conn, message)? {
+                        anyhow::bail!("Message with ID '{}' not found.", message);
+                    }
+                    db::set_chat_tag(&conn, &tag, message)?;
+                    println!("Tagged message {} with '{}'", message, tag);
+                }
+                TagSubcommand::Delete { tag } => {
+                    if let Some(message_id) = db::delete_chat_tag(&conn, &tag)? {
+                        println!(
+                            "Deleted tag '{}' which pointed to message ID {}",
+                            tag, message_id
+                        );
+                    } else {
+                        println!("Tag '{}' not found.", tag);
+                    }
+                }
+            },
             Command::List => {
                 let leaves = db::get_leaf_messages(&conn)?;
                 println!("{:<5} {:<20} Last User Message", "ID", "Tag");

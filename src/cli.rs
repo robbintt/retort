@@ -11,6 +11,9 @@ pub struct Cli {
 pub enum Command {
     /// List all chats
     List,
+    /// Manage chat tags
+    #[command(subcommand)]
+    Tag(TagSubcommand),
     /// Manage profiles
     Profile {
         /// Set the active chat tag for the default profile
@@ -54,5 +57,22 @@ pub enum Command {
         /// Do not stream the response (overrides config).
         #[arg(long)]
         no_stream: bool,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum TagSubcommand {
+    /// Create or update a tag for a message
+    Set {
+        /// The tag name
+        tag: String,
+        /// The message ID to tag
+        #[arg(short, long, required = true)]
+        message: i64,
+    },
+    /// Delete a tag
+    Delete {
+        /// The tag to delete
+        tag: String,
     },
 }

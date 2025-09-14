@@ -224,3 +224,90 @@ fn test_send_command() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn test_tag_command() -> Result<()> {
+    let temp_dir = tempdir()?;
+    let home_dir = temp_dir.path();
+    let db_path = home_dir.join("test.db");
+
+    let config_dir = home_dir.join(".retort");
+    fs::create_dir_all(&config_dir)?;
+    let config_path = config_dir.join("config.yaml");
+    fs::write(
+        config_path,
+        format!("database_path: {}", db_path.to_str().unwrap()),
+    )?;
+
+    // Setup: create messages
+    {
+        let conn = retort::db::setup(db_path.to_str().unwrap())?;
+        retort::db::add_message(&conn, None, "user", "user 1")?;
+        retort::db::add_message(&conn, None, "user", "user 2")?;
+    }
+
+    // Test 1: retort tag set my-tag -m 1
+    Command::cargo_bin("retort")?
+        .args(["tag", "set", "my-tag", "-m", "1"])
+        .env("HOME", home_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Tagged message 1 with 'my-tag'"));
+
+    // Verify tag was set
+    {
+        let conn = retort::db::setup(db_path.to_str().unwrap())?;
+        let tagged_id = retort::db::get_message_id_by_tag(&conn, "my-tag")?.unwrap();
+        assert_eq!(tagged_id, 1);
+    }
+
+    // Test 2: Move tag to another message
+    Command::cargo_bin("retort")?
+        .args(["tag", "set", "my-tag", "-m", "2"])
+        .env("HOME", home_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Tagged message 2 with 'my-tag'"));
+
+    // Verify tag was moved
+    {
+        let conn = retort::db::setup(db_path.to_str().unwrap())?;
+        let tagged_id = retort::db::get_message_id_by_tag(&conn, "my-tag")?.unwrap();
+        assert_eq!(tagged_id, 2);
+    }
+
+    // Test 3: Tag a non-existent message
+    Command::cargo_bin("retort")?
+        .args(["tag", "set", "my-tag", "-m", "99"])
+        .env("HOME", home_dir)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Message with ID '99' not found."));
+
+    // Test 4: Delete tag
+    Command::cargo_bin("retort")?
+        .args(["tag", "delete", "my-tag"])
+        .env("HOME", home_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Deleted tag 'my-tag' which pointed to message ID 2",
+        ));
+
+    // Verify tag was deleted
+    {
+        let conn = retort::db::setup(db_path.to_str().unwrap())?;
+        let tagged_id = retort::db::get_message_id_by_tag(&conn, "my-tag")?;
+        assert!(tagged_id.is_none());
+    }
+
+    // Test 5: Delete non-existent tag
+    Command::cargo_bin("retort")?
+        .args(["tag", "delete", "my-tag"])
+        .env("HOME", home_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Tag 'my-tag' not found."));
+
+    Ok(())
+}

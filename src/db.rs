@@ -157,6 +157,14 @@ pub fn set_chat_tag(conn: &Connection, tag: &str, message_id: i64) -> Result<()>
     Ok(())
 }
 
+pub fn delete_chat_tag(conn: &Connection, tag: &str) -> Result<Option<i64>> {
+    let message_id = get_message_id_by_tag(conn, tag)?;
+    if message_id.is_some() {
+        conn.execute("DELETE FROM chat_tags WHERE tag = ?1", [tag])?;
+    }
+    Ok(message_id)
+}
+
 pub fn get_active_chat_tag(conn: &Connection) -> Result<Option<String>> {
     let mut stmt = conn.prepare("SELECT active_chat_tag FROM profiles WHERE name = 'default'")?;
     let mut rows = stmt.query_map([], |row| row.get(0))?;
