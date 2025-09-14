@@ -1,15 +1,13 @@
 #!/bin/bash
 set -e
 
-# Function to run on exit
-cleanup() {
-    if [ "$?" -ne 0 ]; then
-        echo "CI checks failed."
-    fi
+# Function to run on any error
+handle_error() {
+    echo "CI checks failed."
 }
 
-# Register the cleanup function to be called on script exit
-trap cleanup EXIT
+# Register the error handler
+trap handle_error ERR
 
 echo "Running All CI Checks..."
 
