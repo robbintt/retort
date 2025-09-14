@@ -13,8 +13,7 @@ struct Args {
 
 fn main() -> anyhow::Result<()> {
     let _args = Args::parse();
-    let config = config::load()?;
-    println!("Database path: {}", config.database_path);
+    let _config = config::load()?;
     Ok(())
 }
 
