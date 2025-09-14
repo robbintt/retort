@@ -7,6 +7,7 @@ pub mod cli;
 pub mod config;
 pub mod db;
 pub mod llm;
+pub mod prompt;
 
 use cli::{Cli, Command};
 
@@ -109,11 +110,21 @@ pub async fn run() -> anyhow::Result<()> {
                 // Get conversation history to build prompt
                 let history = db::get_conversation_history(&conn, user_message_id)?;
 
+                let (cur_messages, done_messages) = if let Some(last) = history.last() {
+                    (vec![last.clone()], history[..history.len() - 1].to_vec())
+                } else {
+                    (Vec::new(), Vec::new())
+                };
+
+                let prompt_str = prompt::build_prompt(done_messages, cur_messages)?;
+
+                let prompt_messages = prompt::split_chat_history_markdown(&prompt_str);
+
                 // Convert to LLM ChatMessage format
-                let llm_messages: Vec<ChatMessage> = history
+                let llm_messages: Vec<ChatMessage> = prompt_messages
                     .iter()
                     .map(|msg| {
-                        if msg.role == "user" {
+                        if msg.role == "user" || msg.role == "system" {
                             ChatMessage::user().content(msg.content.clone()).build()
                         } else {
                             ChatMessage::assistant()

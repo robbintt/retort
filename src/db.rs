@@ -61,6 +61,7 @@ pub struct Leaf {
     pub tag: Option<String>,
 }
 
+#[derive(Clone, Debug)]
 pub struct HistoryMessage {
     pub role: String,
     pub content: String,
