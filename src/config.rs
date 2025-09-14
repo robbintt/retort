@@ -34,4 +34,3 @@ pub fn load() -> Result<Config> {
         database_path: expanded_db_path,
     })
 }
-
