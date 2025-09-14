@@ -8,6 +8,20 @@ A Rust CLI pair programmer.
 
 The name reflects the goal of this tool: to apply a focused, transformative process to a codebase through interaction with an AI.
 
+## Building
+
+You can build the binary using Cargo:
+
+```bash
+# For a development build (unoptimized)
+cargo build
+
+# For a release build (optimized)
+cargo build --release
+```
+
+The executable will be located at `target/debug/retort` for development builds or `target/release/retort` for release builds.
+
 ## Usage
 
 You can run the application using `cargo run --`. All arguments passed after the `--` are sent to the `retort` binary.
