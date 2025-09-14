@@ -117,16 +117,17 @@ fn test_history_command() -> Result<()> {
 
     // Test 5: nonexistent tag
     let mut cmd = Command::cargo_bin("retort")?;
-    cmd.arg("history")
-        .arg("nonexistent")
-        .env("HOME", home_dir);
+    cmd.arg("history").arg("nonexistent").env("HOME", home_dir);
     cmd.assert()
         .failure()
         .stderr(predicate::str::contains("Tag 'nonexistent' not found."));
 
     // Test 6: nonexistent ID
     let mut cmd = Command::cargo_bin("retort")?;
-    cmd.arg("history").arg("-m").arg("999").env("HOME", home_dir);
+    cmd.arg("history")
+        .arg("-m")
+        .arg("999")
+        .env("HOME", home_dir);
     cmd.assert()
         .failure()
         .stderr(predicate::str::contains("Message with ID '999' not found."));

@@ -97,11 +97,8 @@ pub fn run() -> anyhow::Result<()> {
                         })?
                     }
                     // `retort history <value>` or `retort history -t <value>`
-                    (Some(value), _, false) => {
-                        db::get_message_id_by_tag(&conn, &value)?.ok_or_else(|| {
-                            anyhow::anyhow!("Tag '{}' not found.", value)
-                        })?
-                    }
+                    (Some(value), _, false) => db::get_message_id_by_tag(&conn, &value)?
+                        .ok_or_else(|| anyhow::anyhow!("Tag '{}' not found.", value))?,
                     // `retort history -m <value>`
                     (Some(value), false, true) => {
                         let id = value.parse::<i64>()?;
