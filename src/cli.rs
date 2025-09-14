@@ -5,14 +5,12 @@ use clap::{Parser, Subcommand};
 pub struct Cli {
     #[command(subcommand)]
     pub command: Option<Command>,
-
-    /// List all chats
-    #[arg(short, long)]
-    pub list_chats: bool,
 }
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    /// List all chats
+    List,
     /// Manage profiles
     Profile {
         /// Set the active chat tag for the default profile

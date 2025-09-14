@@ -36,7 +36,7 @@ fn test_list_chats_format_and_logic() -> Result<()> {
     }
 
     let mut cmd = Command::cargo_bin("retort")?;
-    cmd.arg("-l").env("HOME", home_dir);
+    cmd.arg("list").env("HOME", home_dir);
 
     // Assertions
     // Note: The order is descending by creation date, so message 3 comes first.

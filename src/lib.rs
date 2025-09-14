@@ -19,6 +19,27 @@ pub async fn run() -> anyhow::Result<()> {
 
     if let Some(command) = cli.command {
         match command {
+            Command::List => {
+                let leaves = db::get_leaf_messages(&conn)?;
+                println!("{:<5} {:<20} Last User Message", "ID", "Tag");
+                println!("{:-<5} {:-<20} {:-<70}", "", "", "");
+                for leaf in leaves {
+                    let history = db::get_conversation_history(&conn, leaf.id)?;
+                    let last_user_message = history.iter().filter(|m| m.role == "user").next_back();
+
+                    let preview_content = last_user_message
+                        .map(|m| m.content.clone())
+                        .unwrap_or(leaf.content);
+
+                    let truncated_content: String = preview_content.chars().take(70).collect();
+                    let one_line_content = truncated_content.replace('\n', " ");
+
+                    let tag_display = leaf.tag.as_deref().unwrap_or("-");
+
+                    // Produces a clean, column-based output that is easy to parse with standard tools.
+                    println!("{:<5} {:<20} {}", leaf.id, tag_display, one_line_content);
+                }
+            }
             Command::Profile { active_chat } => {
                 if let Some(tag) = active_chat {
                     db::set_active_chat_tag(&conn, &tag)?;
@@ -179,26 +200,6 @@ pub async fn run() -> anyhow::Result<()> {
                     );
                 }
             }
-        }
-    } else if cli.list_chats {
-        let leaves = db::get_leaf_messages(&conn)?;
-        println!("{:<5} {:<20} Last User Message", "ID", "Tag");
-        println!("{:-<5} {:-<20} {:-<70}", "", "", "");
-        for leaf in leaves {
-            let history = db::get_conversation_history(&conn, leaf.id)?;
-            let last_user_message = history.iter().filter(|m| m.role == "user").next_back();
-
-            let preview_content = last_user_message
-                .map(|m| m.content.clone())
-                .unwrap_or(leaf.content);
-
-            let truncated_content: String = preview_content.chars().take(70).collect();
-            let one_line_content = truncated_content.replace('\n', " ");
-
-            let tag_display = leaf.tag.as_deref().unwrap_or("-");
-
-            // Produces a clean, column-based output that is easy to parse with standard tools.
-            println!("{:<5} {:<20} {}", leaf.id, tag_display, one_line_content);
         }
     }
 
