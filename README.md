@@ -103,3 +103,18 @@ retort profile
 # Set the active chat tag to 'my-chat'
 retort profile --active-chat my-chat
 ```
+
+### Viewing Output
+
+A TUI is useful and possibly in the future.
+
+For now try glow (cli markdown renderer).
+
+```
+brew install glow
+
+# view your active chat history, paginated, markdown-rendered, with 80 width.
+target/debug/retort history | glow -p -w80
+```
+
+
