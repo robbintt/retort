@@ -31,7 +31,10 @@ pub async fn run() -> anyhow::Result<()> {
                         }
                         Some(old_id) => {
                             db::set_chat_tag(&conn, &tag, message)?;
-                            println!("Moved tag '{}' from message {} to {}.", tag, old_id, message);
+                            println!(
+                                "Moved tag '{}' from message {} to {}.",
+                                tag, old_id, message
+                            );
                         }
                         None => {
                             db::set_chat_tag(&conn, &tag, message)?;
