@@ -54,6 +54,13 @@ pub fn run() -> anyhow::Result<()> {
                 if let Some(tag) = active_chat {
                     db::set_active_chat_tag(&conn, &tag)?;
                     println!("Set active chat tag to: {}", tag);
+                } else {
+                    let profile = db::get_profile_by_name(&conn, "default")?;
+                    println!("Active Profile: {}", profile.name);
+                    println!(
+                        "  active_chat_tag: {}",
+                        profile.active_chat_tag.as_deref().unwrap_or("None")
+                    );
                 }
             }
         }

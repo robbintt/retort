@@ -47,3 +47,23 @@ fn test_chat_flow() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn test_profile_flow() -> Result<()> {
+    let conn = setup_in_memory_db()?;
+
+    // 1. Default profile should exist with no active chat.
+    let profile = db::get_profile_by_name(&conn, "default")?;
+    assert_eq!(profile.name, "default");
+    assert_eq!(profile.active_chat_tag, None);
+
+    // 2. Set active chat tag.
+    db::set_active_chat_tag(&conn, "my-chat")?;
+    let updated_profile = db::get_profile_by_name(&conn, "default")?;
+    assert_eq!(
+        updated_profile.active_chat_tag,
+        Some("my-chat".to_string())
+    );
+
+    Ok(())
+}

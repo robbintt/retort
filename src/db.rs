@@ -133,3 +133,23 @@ pub fn set_active_chat_tag(conn: &Connection, tag: &str) -> Result<()> {
     )?;
     Ok(())
 }
+
+#[derive(Debug, PartialEq)]
+pub struct Profile {
+    pub name: String,
+    pub active_chat_tag: Option<String>,
+}
+
+pub fn get_profile_by_name(conn: &Connection, name: &str) -> Result<Profile> {
+    conn.query_row(
+        "SELECT name, active_chat_tag FROM profiles WHERE name = ?1",
+        [name],
+        |row| {
+            Ok(Profile {
+                name: row.get(0)?,
+                active_chat_tag: row.get(1)?,
+            })
+        },
+    )
+    .map_err(Into::into)
+}
