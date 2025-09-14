@@ -29,7 +29,7 @@ The executable will be located at `target/debug/retort` for development builds o
 
 ## Usage
 
-You can run the application using `cargo run --`. All arguments passed after the `--` are sent to the `retort` binary.
+After building with `cargo build`, you can run the application directly.
 
 ### Submitting Prompts
 
@@ -40,7 +40,7 @@ To submit a prompt, use the `-p` or `--prompt` flag.
 To start a new conversation, provide a prompt. This creates a new root message.
 
 ```bash
-cargo run -- -p "your prompt here"
+retort -p "your prompt here"
 ```
 
 #### Continue a Chat
@@ -49,10 +49,10 @@ You can continue an existing conversation by providing a chat tag or a parent me
 
 ```bash
 # Continue from the chat tagged 'my-chat'
-cargo run -- -p "next question" --chat my-chat
+retort -p "next question" --chat my-chat
 
 # Continue by creating a new branch from message ID 1
-cargo run -- -p "let's try something different" --parent 1
+retort -p "let's try something different" --parent 1
 ```
 
 By default, Retort will use the active chat tag set on your profile.
@@ -62,7 +62,7 @@ By default, Retort will use the active chat tag set on your profile.
 To see a list of all current conversations (the latest message in each branch), use the `-l` or `--list-chats` flag.
 
 ```bash
-cargo run -- -l
+retort -l
 ```
 
 ### Viewing Chat History
