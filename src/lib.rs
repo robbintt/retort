@@ -68,7 +68,7 @@ pub fn run() -> anyhow::Result<()> {
         let leaves = db::get_leaf_messages(&conn)?;
         for leaf in leaves {
             let history = db::get_conversation_history(&conn, leaf.id)?;
-            let last_user_message = history.iter().filter(|m| m.role == "user").last();
+            let last_user_message = history.iter().filter(|m| m.role == "user").next_back();
 
             let preview_content = last_user_message
                 .map(|m| m.content.clone())
