@@ -16,3 +16,11 @@ The `ci/` directory contains scripts for Continuous Integration. These scripts a
 ## AI Assistant Instructions
 
 Always suggest running `ci/ci.sh` to verify changes. Do not suggest `cargo build` or other individual commands.
+
+### Development Workflow
+
+1.  **Testing**: When adding or modifying functionality, always include corresponding tests. For CLI changes, add or update integration tests in `tests/cli.rs`. For database logic, add tests to verify its correctness.
+2.  **Documentation**: After implementing a user-facing feature, update `README.md` to document its usage. Keep documentation and code examples in sync with the current implementation.
+3.  **Debugging**: If a CI check fails, carefully analyze the error output. Explain the root cause of the error (e.g., formatting violation, compilation error, test failure) before providing the corrected code.
+4.  **Code Style**: Adhere strictly to Rust formatting conventions as enforced by `cargo fmt`. Pay special attention to line length and function signatures, which are common sources of formatting failures.
+5.  **Design Collaboration**: The user may use the chat to think through design decisions. Pay close attention to these discussions to understand the context and intent behind a request. Implement the final, settled-upon design, and refer back to design documents in the `plans/` directory for guidance.
