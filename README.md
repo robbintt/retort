@@ -33,10 +33,10 @@ You can run the application using `cargo run --`. All arguments passed after the
 
 ### List Chats
 
-To see a list of the current conversations (the latest message in each branch), use the `--show-chats` flag:
+To see a list of the current conversations (the latest message in each branch), use the `-l` or `--list-chats` flag:
 
 ```bash
-cargo run -- --show-chats
+cargo run -- -l
 ```
 
 ### Start a New Chat

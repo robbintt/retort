@@ -27,9 +27,9 @@ struct PromptArgs {
     #[arg(long)]
     chat: Option<String>,
 
-    /// Show current chats
-    #[arg(long)]
-    show_chats: bool,
+    /// List all chats
+    #[arg(short, long)]
+    list_chats: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -64,7 +64,7 @@ pub fn run() -> anyhow::Result<()> {
                 }
             }
         }
-    } else if cli.prompt_args.show_chats {
+    } else if cli.prompt_args.list_chats {
         let messages = db::get_leaf_messages(&conn)?;
         for message in messages {
             let truncated_content: String = message.content.chars().take(100).collect();
