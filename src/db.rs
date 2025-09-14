@@ -74,7 +74,7 @@ pub fn get_leaf_messages(conn: &Connection) -> Result<Vec<Leaf>> {
         FROM messages m1
         LEFT JOIN chat_tags ct ON m1.id = ct.message_id
         WHERE NOT EXISTS (SELECT 1 FROM messages m2 WHERE m2.parent_id = m1.id)
-        ORDER BY m1.created_at DESC;
+        ORDER BY m1.created_at DESC, m1.id DESC;
         ",
     )?;
 
