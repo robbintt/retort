@@ -1,5 +1,7 @@
 # retort
 
+![A retort in a medieval lab](assets/retort.png)
+
 A Rust CLI pair programmer.
 
 ## Naming
