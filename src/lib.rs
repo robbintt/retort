@@ -90,10 +90,7 @@ pub fn run() -> anyhow::Result<()> {
         // Dummy LLM response
         let assistant_message_id =
             db::add_message(&conn, Some(user_message_id), "assistant", "Ok.")?;
-        println!(
-            "Added assistant message with ID: {}",
-            assistant_message_id
-        );
+        println!("Added assistant message with ID: {}", assistant_message_id);
 
         // If a chat tag was in play, update it to point to the new assistant message
         if let Some(tag) = chat_tag_for_update {
