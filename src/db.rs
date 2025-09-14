@@ -71,7 +71,12 @@ pub fn get_leaf_messages(conn: &Connection) -> Result<Vec<Message>> {
     Ok(messages)
 }
 
-pub fn add_message(conn: &Connection, parent_id: Option<i64>, role: &str, content: &str) -> Result<i64> {
+pub fn add_message(
+    conn: &Connection,
+    parent_id: Option<i64>,
+    role: &str,
+    content: &str,
+) -> Result<i64> {
     conn.execute(
         "INSERT INTO messages (parent_id, role, content) VALUES (?1, ?2, ?3)",
         (parent_id, role, content),
