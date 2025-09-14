@@ -1,7 +1,9 @@
 use clap::{Parser, Subcommand};
+use llm::chat::{ChatMessage, ChatRole};
 
 pub mod config;
 pub mod db;
+pub mod llm;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -54,7 +56,7 @@ enum Command {
     },
 }
 
-pub fn run() -> anyhow::Result<()> {
+pub async fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
     let config = config::load()?;
     let expanded_path = shellexpand::tilde(&config.database_path);
@@ -148,9 +150,35 @@ pub fn run() -> anyhow::Result<()> {
                 let user_message_id = db::add_message(&conn, parent_id, "user", &prompt)?;
                 println!("Added user message with ID: {}", user_message_id);
 
-                // Dummy LLM response
-                let assistant_message_id =
-                    db::add_message(&conn, Some(user_message_id), "assistant", "Ok.")?;
+                // Get conversation history to build prompt
+                let history = db::get_conversation_history(&conn, user_message_id)?;
+
+                // Convert to LLM ChatMessage format
+                let llm_messages: Vec<ChatMessage> = history
+                    .iter()
+                    .map(|msg| {
+                        let role = if msg.role == "user" {
+                            ChatRole::User
+                        } else {
+                            ChatRole::Assistant
+                        };
+                        ChatMessage::builder()
+                            .role(role)
+                            .content(msg.content.clone())
+                            .build()
+                            .unwrap() // Should not fail
+                    })
+                    .collect();
+
+                // Get LLM response
+                let assistant_response = llm::get_response(&llm_messages).await?;
+
+                let assistant_message_id = db::add_message(
+                    &conn,
+                    Some(user_message_id),
+                    "assistant",
+                    &assistant_response,
+                )?;
                 println!("Added assistant message with ID: {}", assistant_message_id);
 
                 // If a chat tag was in play for this operation, update it.
