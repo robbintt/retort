@@ -31,3 +31,10 @@ This problem is well beyond our current scope. As long as we have the data struc
 My decision point is between a doubly linked list or a singly linked list traversing from leaf to root, and whether the leaf is the last message or the root.
 
 To make things easier, let's have the root be the parentless message, then the leaf will be the latest message in the branch.  Then, it's very easy to visualize.  We will have a method to get the message root, then we have a method to get common leaves, which traverses backwards to the root, then traverses forwards and identifies all the leaf nodes. This requires bidirectional traversal. To implement with single direction traversal, from root to leaf, we must first find the root of the leaf, which means we search every single root for that leaf, then find all its other leaves.  To single direction from leaf to root, we must traverse from leaf to root, then traverse every other leaf to root, then filter in the common root.  An alternative is maintaining a leaf-root index, so we know which leaves belong to which root.  With this index, we only need single direction, either leaf to root or root to leaf are sufficient.
+
+---
+*2025-09-14*
+
+I still have the issue of editing the parent message. I guess I can defer this and simply not deal with it, but I want the data structure to support it if I add the feature. The user may want to edit the LLM message to inject a behavior.  Also, the user may want to edit their own message, e.g. for the same reason. Adding new messages faces a problem like this, where it essentially adds a multi key child, but then the child of that message converges back to the original tree structure.  Both introduce a situation where the descendant messages have multiple parents.
+
+However, in the message uniqueness model, an edited message requires rehashing all the child model parents, so maybe it duplicates all the child messages forming a new descendant tree and new leaf node.
