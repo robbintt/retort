@@ -33,26 +33,38 @@ After building with `cargo build`, you can run the application directly.
 
 ### Submitting Prompts
 
-To submit a prompt, use the `-p` or `--prompt` flag.
-
-#### Start a New Chat
-
-To start a new conversation, provide a prompt. This creates a new root message.
+To submit a prompt, use the `send` subcommand.
 
 ```bash
-retort -p "your prompt here"
+retort send "your prompt here"
 ```
 
-#### Continue a Chat
+By default, this continues the conversation from the active chat tag.
 
-You can continue an existing conversation by providing a chat tag or a parent message ID.
+#### Starting a New Chat
+
+Use the `--new` flag to start a completely new conversation, creating a new root message.
+
+```bash
+retort send "a totally new idea" --new
+```
+
+You can also start a new, named chat by providing a new tag with the `--chat` flag.
+
+```bash
+retort send "let's talk about Rust" --chat rust-stuff
+```
+
+#### Continuing a Chat
+
+You can explicitly continue an existing conversation by providing a chat tag or create a new branch from a parent message ID.
 
 ```bash
 # Continue from the chat tagged 'my-chat'
-retort -p "next question" --chat my-chat
+retort send "next question" --chat my-chat
 
-# Continue by creating a new branch from message ID 1
-retort -p "let's try something different" --parent 1
+# Create a new branch from message ID 1. This does not update any tags.
+retort send "let's try something different" --parent 1
 ```
 
 By default, Retort will use the active chat tag set on your profile.

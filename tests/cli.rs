@@ -136,3 +136,88 @@ fn test_history_command() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn test_send_command() -> Result<()> {
+    let temp_dir = tempdir()?;
+    let home_dir = temp_dir.path();
+    let db_path = home_dir.join("test.db");
+
+    let config_dir = home_dir.join(".retort");
+    fs::create_dir_all(&config_dir)?;
+    let config_path = config_dir.join("config.yaml");
+    fs::write(
+        config_path,
+        format!("database_path: {}", db_path.to_str().unwrap()),
+    )?;
+
+    // Setup: create a chat and tag it
+    let initial_leaf_id;
+    {
+        let conn = retort::db::setup(db_path.to_str().unwrap())?;
+        let u1 = retort::db::add_message(&conn, None, "user", "user 1")?;
+        let a1 = retort::db::add_message(&conn, Some(u1), "assistant", "assistant 1")?;
+        retort::db::set_chat_tag(&conn, "my-chat", a1)?;
+        initial_leaf_id = a1;
+    }
+
+    // Test 1: retort send --parent <id> "..."
+    // Should create a branch from the original assistant message, and NOT update the tag.
+    Command::cargo_bin("retort")?
+        .arg("send")
+        .arg("--parent")
+        .arg(initial_leaf_id.to_string())
+        .arg("branch prompt")
+        .env("HOME", home_dir)
+        .assert()
+        .success();
+
+    // Verify tag still points to old message
+    {
+        let conn = retort::db::setup(db_path.to_str().unwrap())?;
+        let tagged_id = retort::db::get_message_id_by_tag(&conn, "my-chat")?.unwrap();
+        assert_eq!(tagged_id, initial_leaf_id);
+    }
+
+    // Test 2: retort send "..." (using active tag)
+    // First, set active tag
+    Command::cargo_bin("retort")?
+        .arg("profile")
+        .arg("--active-chat")
+        .arg("my-chat")
+        .env("HOME", home_dir)
+        .assert()
+        .success();
+
+    Command::cargo_bin("retort")?
+        .arg("send")
+        .arg("continue prompt")
+        .env("HOME", home_dir)
+        .assert()
+        .success();
+
+    // Verify tag points to new message (id 6, since we added 2 in branch test, 2 here)
+    {
+        let conn = retort::db::setup(db_path.to_str().unwrap())?;
+        let tagged_id = retort::db::get_message_id_by_tag(&conn, "my-chat")?.unwrap();
+        assert_eq!(tagged_id, 6);
+    }
+
+    // Test 3: retort send --new "..."
+    Command::cargo_bin("retort")?
+        .arg("send")
+        .arg("--new")
+        .arg("new prompt")
+        .env("HOME", home_dir)
+        .assert()
+        .success();
+
+    // Verify a new root was created. There should now be 3 leaves.
+    {
+        let conn = retort::db::setup(db_path.to_str().unwrap())?;
+        let leaves = retort::db::get_leaf_messages(&conn)?;
+        assert_eq!(leaves.len(), 3);
+    }
+
+    Ok(())
+}

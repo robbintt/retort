@@ -9,24 +9,6 @@ struct Cli {
     #[command(subcommand)]
     command: Option<Command>,
 
-    #[clap(flatten)]
-    prompt_args: PromptArgs,
-}
-
-#[derive(ClapArgs, Debug)]
-struct PromptArgs {
-    /// The prompt to send to the model
-    #[arg(short, long)]
-    prompt: Option<String>,
-
-    /// The parent message ID to continue from
-    #[arg(long)]
-    parent: Option<i64>,
-
-    /// The chat tag to continue from.
-    #[arg(long)]
-    chat: Option<String>,
-
     /// List all chats
     #[arg(short, long)]
     list_chats: bool,
@@ -52,6 +34,23 @@ enum Command {
         /// Explicitly treat the target as a message ID
         #[arg(short, long)]
         message: bool,
+    },
+    /// Send a prompt to the model
+    Send {
+        /// The prompt to send
+        prompt: String,
+
+        /// The parent message ID to continue from. Creates a new branch and does not update any tags.
+        #[arg(long, conflicts_with_all = &["new", "chat"])]
+        parent: Option<i64>,
+
+        /// The chat tag to continue from.
+        #[arg(long, conflicts_with = "new")]
+        chat: Option<String>,
+
+        /// Start a new chat, ignoring the active chat tag.
+        #[arg(long)]
+        new: bool,
     },
 }
 
@@ -119,8 +118,56 @@ pub fn run() -> anyhow::Result<()> {
                     }
                 }
             }
+            Command::Send {
+                prompt,
+                parent,
+                chat,
+                new,
+            } => {
+                let mut parent_id: Option<i64> = None;
+                let mut chat_tag_for_update: Option<String> = None;
+
+                if new {
+                    // --new: new root message, no tag update
+                } else if let Some(id) = parent {
+                    // --parent: new branch from id, no tag update
+                    parent_id = Some(id);
+                } else if let Some(tag) = chat {
+                    // --chat: continue from tag, update tag
+                    parent_id = db::get_message_id_by_tag(&conn, &tag)?;
+                    chat_tag_for_update = Some(tag);
+                } else {
+                    // default: continue from active tag, or start a new chat if no active tag
+                    if let Some(tag) = db::get_active_chat_tag(&conn)? {
+                        parent_id = db::get_message_id_by_tag(&conn, &tag)?;
+                        chat_tag_for_update = Some(tag);
+                    }
+                }
+
+                // Add user message
+                let user_message_id = db::add_message(&conn, parent_id, "user", &prompt)?;
+                println!("Added user message with ID: {}", user_message_id);
+
+                // Dummy LLM response
+                let assistant_message_id =
+                    db::add_message(&conn, Some(user_message_id), "assistant", "Ok.")?;
+                println!("Added assistant message with ID: {}", assistant_message_id);
+
+                // If a chat tag was in play for this operation, update it.
+                // This happens for --chat or the active profile tag, but not for --parent or --new.
+                if let Some(tag) = chat_tag_for_update {
+                    if parent_id.is_none() {
+                        println!("Creating new chat with tag '{}'", &tag);
+                    }
+                    db::set_chat_tag(&conn, &tag, assistant_message_id)?;
+                    println!(
+                        "Updated tag '{}' to point to message ID {}",
+                        tag, assistant_message_id
+                    );
+                }
+            }
         }
-    } else if cli.prompt_args.list_chats {
+    } else if cli.list_chats {
         let leaves = db::get_leaf_messages(&conn)?;
         println!("{:<5} {:<20} Last User Message", "ID", "Tag");
         println!("{:-<5} {:-<20} {:-<70}", "", "", "");
@@ -139,38 +186,6 @@ pub fn run() -> anyhow::Result<()> {
 
             // Produces a clean, column-based output that is easy to parse with standard tools.
             println!("{:<5} {:<20} {}", leaf.id, tag_display, one_line_content);
-        }
-    } else if let Some(prompt) = cli.prompt_args.prompt {
-        // Determine chat tag to use for this operation.
-        // The user can specify a tag directly, or we can fall back to the active one.
-        let chat_tag_for_update = cli.prompt_args.chat.or(db::get_active_chat_tag(&conn)?);
-
-        // Determine parent_id
-        // Priority: --parent > --chat > active_chat_tag
-        let mut parent_id: Option<i64> = None;
-        if let Some(id) = cli.prompt_args.parent {
-            parent_id = Some(id);
-        } else if let Some(ref tag) = chat_tag_for_update {
-            // Look up the message ID from the tag
-            parent_id = db::get_message_id_by_tag(&conn, tag)?;
-        }
-
-        // Add user message
-        let user_message_id = db::add_message(&conn, parent_id, "user", &prompt)?;
-        println!("Added user message with ID: {}", user_message_id);
-
-        // Dummy LLM response
-        let assistant_message_id =
-            db::add_message(&conn, Some(user_message_id), "assistant", "Ok.")?;
-        println!("Added assistant message with ID: {}", assistant_message_id);
-
-        // If a chat tag was in play, update it to point to the new assistant message
-        if let Some(tag) = chat_tag_for_update {
-            db::set_chat_tag(&conn, &tag, assistant_message_id)?;
-            println!(
-                "Updated tag '{}' to point to message ID {}",
-                tag, assistant_message_id
-            );
         }
     }
 
