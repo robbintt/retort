@@ -1,5 +1,7 @@
 use ::llm::chat::ChatMessage;
 use clap::{Parser, Subcommand};
+use futures::StreamExt;
+use std::io::{stdout, Write};
 
 pub mod config;
 pub mod db;
@@ -53,6 +55,14 @@ enum Command {
         /// Start a new chat, ignoring the active chat tag.
         #[arg(long)]
         new: bool,
+
+        /// Stream the response (overrides config).
+        #[arg(long, conflicts_with = "no_stream")]
+        stream: bool,
+
+        /// Do not stream the response (overrides config).
+        #[arg(long)]
+        no_stream: bool,
     },
 }
 
@@ -125,6 +135,8 @@ pub async fn run() -> anyhow::Result<()> {
                 parent,
                 chat,
                 new,
+                stream,
+                no_stream,
             } => {
                 let mut parent_id: Option<i64> = None;
                 let mut chat_tag_for_update: Option<String> = None;
@@ -168,7 +180,28 @@ pub async fn run() -> anyhow::Result<()> {
                     .collect();
 
                 // Get LLM response
-                let assistant_response = llm::get_response(&llm_messages).await?;
+                let use_stream = if stream {
+                    true
+                } else if no_stream {
+                    false
+                } else {
+                    config.stream.unwrap_or(false)
+                };
+
+                let assistant_response = if use_stream {
+                    let mut stream = llm::get_response_stream(&llm_messages).await?;
+                    let mut full_response = String::new();
+                    while let Some(result) = stream.next().await {
+                        let text_chunk = result?;
+                        full_response.push_str(&text_chunk);
+                        print!("{}", text_chunk);
+                        stdout().flush()?;
+                    }
+                    println!(); // For a newline after the streaming is done
+                    full_response
+                } else {
+                    llm::get_response(&llm_messages).await?
+                };
 
                 let assistant_message_id = db::add_message(
                     &conn,

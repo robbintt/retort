@@ -39,7 +39,7 @@ To submit a prompt, use the `send` subcommand.
 retort send "your prompt here"
 ```
 
-By default, this continues the conversation from the active chat tag.
+By default, this continues the conversation from the active chat tag. This command supports streaming output with the `--stream` flag.
 
 #### Starting a New Chat
 
