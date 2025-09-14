@@ -183,12 +183,11 @@ pub async fn run() -> anyhow::Result<()> {
                     (Vec::new(), Vec::new())
                 };
 
-                let prompt_str = prompt::build_prompt(done_messages, cur_messages)?;
-
-                let prompt_messages = prompt::split_chat_history_markdown(&prompt_str);
+                let llm_messages_for_prompt =
+                    prompt::build_prompt_messages(done_messages, cur_messages)?;
 
                 // Convert to LLM ChatMessage format
-                let llm_messages: Vec<ChatMessage> = prompt_messages
+                let llm_messages: Vec<ChatMessage> = llm_messages_for_prompt
                     .iter()
                     .map(|msg| {
                         if msg.role == "user" || msg.role == "system" {
