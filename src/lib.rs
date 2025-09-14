@@ -1,6 +1,7 @@
 use clap::Parser;
 
 pub mod config;
+pub mod db;
 
 /// Retort: An AI pair programmer
 #[derive(Parser, Debug)]
@@ -13,6 +14,8 @@ struct Args {
 
 pub fn run() -> anyhow::Result<()> {
     let _args = Args::parse();
-    let _config = config::load()?;
+    let config = config::load()?;
+    let expanded_path = shellexpand::tilde(&config.database_path);
+    let _conn = db::setup(&expanded_path)?;
     Ok(())
 }
