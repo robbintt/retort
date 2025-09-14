@@ -4,7 +4,7 @@ This document outlines the initial tasks to get Retort, an AI pair programmer, f
 
 ## Core Principles & Design Considerations
 
-*   **Stateless Session Management:** The CLI application will be stateless between invocations. All state required to reconstruct a session (message history, read-only files, read-write files, model sent) will be persisted in and loaded from the SQLite database. This allows users to specify a session as the starting point for any action.
+*   **Stateless Operation:** The CLI application will be stateless between invocations. A "conversation" is not a fixed entity but a path reconstructed from the message graph stored in the SQLite database. All state (the full message tree, files, etc.) is persisted. This allows users to resume or branch from any point in the conversation history.
 *   **Configuration:** A config file will allow specifying the SQLite database location, with a default of `~/.retort/data/retort.db`.
 *   **CLI First:** No UI initially; all interactions will be via the command-line interface (CLI) with flags for messages to the LLM.
 *   **Output & Application:** LLM responses will be streamed to stdout, processed for fenced code changes, and applied to the codebase. Initial application will use Git, followed by Jujutsu (jj).
@@ -25,17 +25,17 @@ The primary goal here is to establish the CLI entry point and reflect user input
 *   **Message Reflection:** For the very first iteration, simply echo the `-p` prompt back to stdout. This validates the CLI setup.
 *   **Config File Setup:** Implement basic reading of a configuration file (e.g., `serde` for TOML/YAML) to define the default SQLite database path (`~/.retort/data/retort.db`) and allow overrides.
 
-### Phase 2: Session Management & Database Integration
+### Phase 2: Conversation Persistence & Database Integration
 
 Establish the core for state persistence and session handling.
 
 *   **Select Rust SQLite Client:** Choose a robust Rust library for SQLite database interaction (e.g., `rusqlite`).
 *   **Database Schema Design:** Define the initial schema. Conversations are modeled as a tree of messages.
-    *   `messages` table: Stores each message. A nullable `parent_id` column creates the tree structure. Root messages have a `NULL` parent.
+    *   `messages` table: Stores each message. A nullable `parent_id` column creates the tree structure. Root messages have a `NULL` parent. It will also include a flexible `metadata` column (JSON stored as TEXT) to store message-specific data, such as the model parameters used for a response.
     *   `files` table: To store file content, linked to a message.
-*   **Session Model:** Create Rust data structures to represent sessions and their associated data.
-*   **Database Interaction Layer:** Implement methods for creating new sessions, adding messages to a session, and retrieving session history.
-*   **CLI-DB Integration:** Modify the CLI to create a new session (if none specified) or load an existing one, and store the initial user message in the database.
+*   **Conversation Model:** Create Rust data structures to represent messages and the reconstructed conversation path.
+*   **Database Interaction Layer:** Implement methods for creating root messages, adding child messages to a parent, and retrieving a conversation history by traversing from a leaf message to its root.
+*   **CLI-DB Integration:** Modify the CLI to create a new root message or branch from an existing message, storing the new message(s) in the database.
 
 ### Phase 3: Prompt Building System
 
@@ -54,7 +54,7 @@ Connect to LLMs, send prompts, and process their responses.
 *   **Model Configuration & Aliasing:** Implement a system for managing LLM parameters, inspired by Aider's model metadata and settings files. Allow users to define model aliases in the configuration (e.g., `gemini-flash-nothink`, `gemini-flash-autothink`) that map to specific model names and parameter sets (e.g., temperature, thinking tokens).
 *   **Streaming Output:** Implement functionality to stream responses from the LLM to stdout as they are received.
 *   **Response Parser (Hook):** Develop a parser hook to identify and extract fenced code blocks (` ``` `) from the LLM's streamed response.
-*   **Change Storage:** The parser will store the parsed changes (file paths, content) in the database, linked to the current session/message.
+*   **Change Storage:** The parser will store the parsed changes (file paths, content) in the database, linked to the corresponding response message.
 *   **Change Application (Hook):**
     *   **Git Integration:** Implement a hook to apply changes stored in the database using Git commands.
     *   **Jujutsu (jj) Integration:** Implement a hook to apply changes using Jujutsu commands, following the Git integration. This hook would query the database for the changes and then apply them.

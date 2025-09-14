@@ -21,6 +21,7 @@ Based on the need to support branching histories and message editing, the data m
 1.  **Messages Table:**
     *   Stores core message data (role, content, timestamp).
     *   A nullable `parent_id` column establishes a tree structure. A `NULL` `parent_id` indicates a root message.
+    *   A flexible `metadata` column (TEXT) will store a JSON object for message-specific data (e.g., model parameters for LLM responses).
     *   The `session_id` foreign key is removed.
 2.  **Message Linkage:**
     *   Each message has at most one parent, forming a tree rather than a more complex graph. This simplifies traversal while still fully supporting branching (a parent can have multiple children).

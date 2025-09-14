@@ -20,6 +20,7 @@ pub fn setup(db_path_str: &str) -> Result<Connection> {
             parent_id INTEGER,
             role TEXT NOT NULL,
             content TEXT NOT NULL,
+            metadata TEXT, -- JSON blob for message-specific data
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
             FOREIGN KEY (parent_id) REFERENCES messages (id)
         );
