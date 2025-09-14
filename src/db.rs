@@ -174,6 +174,11 @@ pub fn set_active_chat_tag(conn: &Connection, tag: &str) -> Result<()> {
     Ok(())
 }
 
+pub fn message_exists(conn: &Connection, id: i64) -> Result<bool> {
+    let mut stmt = conn.prepare("SELECT 1 FROM messages WHERE id = ?1")?;
+    Ok(stmt.exists([id])?)
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Profile {
     pub name: String,

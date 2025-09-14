@@ -30,6 +30,11 @@ struct PromptArgs {
     /// List all chats
     #[arg(short, long)]
     list_chats: bool,
+
+    /// Show the history of a chat by tag or ID.
+    /// If no value is provided, it uses the active chat tag.
+    #[arg(short, long, value_name = "TAG_OR_ID", num_args = 0..=1, default_missing_value = None)]
+    history: Option<Option<String>>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -62,6 +67,47 @@ pub fn run() -> anyhow::Result<()> {
                         profile.active_chat_tag.as_deref().unwrap_or("None")
                     );
                 }
+            }
+        }
+    } else if let Some(history_target) = cli.prompt_args.history {
+        let leaf_id = match history_target {
+            // Case: retort -h <value>
+            Some(value) => {
+                // Heuristic: check for tag first, then fall back to ID.
+                if let Some(id_from_tag) = db::get_message_id_by_tag(&conn, &value)? {
+                    id_from_tag
+                } else {
+                    match value.parse::<i64>() {
+                        Ok(id) => {
+                            if !db::message_exists(&conn, id)? {
+                                anyhow::bail!("Message with ID '{}' not found.", id);
+                            }
+                            id
+                        }
+                        Err(_) => anyhow::bail!("Tag '{}' not found.", value),
+                    }
+                }
+            }
+            // Case: retort -h
+            None => {
+                let active_tag = db::get_active_chat_tag(&conn)?.ok_or_else(|| {
+                    anyhow::anyhow!("No active chat tag set. Use `retort profile --active-chat <tag>`.")
+                })?;
+                db::get_message_id_by_tag(&conn, &active_tag)?.ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "Active chat tag '{}' does not point to a valid message.",
+                        active_tag
+                    )
+                })?
+            }
+        };
+
+        let history = db::get_conversation_history(&conn, leaf_id)?;
+        for (i, message) in history.iter().enumerate() {
+            println!("[{}]", message.role);
+            println!("{}", message.content);
+            if i < history.len() - 1 {
+                println!("---");
             }
         }
     } else if cli.prompt_args.list_chats {
