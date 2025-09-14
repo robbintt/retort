@@ -169,6 +169,7 @@ fn test_send_command() -> Result<()> {
         .arg(initial_leaf_id.to_string())
         .arg("branch prompt")
         .env("HOME", home_dir)
+        .env("MOCK_LLM", "1")
         .assert()
         .success();
 
@@ -193,6 +194,7 @@ fn test_send_command() -> Result<()> {
         .arg("send")
         .arg("continue prompt")
         .env("HOME", home_dir)
+        .env("MOCK_LLM", "1")
         .assert()
         .success();
 
@@ -209,6 +211,7 @@ fn test_send_command() -> Result<()> {
         .arg("--new")
         .arg("new prompt")
         .env("HOME", home_dir)
+        .env("MOCK_LLM", "1")
         .assert()
         .success();
 

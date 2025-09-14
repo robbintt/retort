@@ -5,6 +5,15 @@ use ::llm::{
 use anyhow::Result;
 
 pub async fn get_response(messages: &[ChatMessage]) -> Result<String> {
+    // In a test environment, if MOCK_LLM is set, we return a mock response
+    // without making a network call.
+    if std::env::var("MOCK_LLM").is_ok() {
+        let response_string = "This is a mocked response.".to_string();
+        // The real function prints the response, so we do too for consistency.
+        println!("{}", response_string);
+        return Ok(response_string);
+    }
+
     // Get Google API key from environment variable.
     let api_key =
         std::env::var("GOOGLE_API_KEY").map_err(|_| anyhow::anyhow!("GOOGLE_API_KEY not set."))?;
