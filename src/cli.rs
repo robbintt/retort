@@ -75,4 +75,6 @@ pub enum TagSubcommand {
         /// The tag to delete
         tag: String,
     },
+    /// List all tags
+    List,
 }

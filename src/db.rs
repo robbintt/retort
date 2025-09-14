@@ -54,6 +54,11 @@ pub fn setup(db_path_str: &str) -> Result<Connection> {
     Ok(conn)
 }
 
+pub struct Tag {
+    pub name: String,
+    pub message_id: i64,
+}
+
 pub struct Leaf {
     pub id: i64,
     pub created_at: String,
@@ -163,6 +168,21 @@ pub fn delete_chat_tag(conn: &Connection, tag: &str) -> Result<Option<i64>> {
         conn.execute("DELETE FROM chat_tags WHERE tag = ?1", [tag])?;
     }
     Ok(message_id)
+}
+
+pub fn get_all_tags(conn: &Connection) -> Result<Vec<Tag>> {
+    let mut stmt = conn.prepare("SELECT tag, message_id FROM chat_tags ORDER BY tag ASC")?;
+    let tags_iter = stmt.query_map([], |row| {
+        Ok(Tag {
+            name: row.get(0)?,
+            message_id: row.get(1)?,
+        })
+    })?;
+    let mut tags = Vec::new();
+    for tag in tags_iter {
+        tags.push(tag?);
+    }
+    Ok(tags)
 }
 
 pub fn get_active_chat_tag(conn: &Connection) -> Result<Option<String>> {

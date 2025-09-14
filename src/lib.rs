@@ -37,6 +37,18 @@ pub async fn run() -> anyhow::Result<()> {
                         println!("Tag '{}' not found.", tag);
                     }
                 }
+                TagSubcommand::List => {
+                    let tags = db::get_all_tags(&conn)?;
+                    if tags.is_empty() {
+                        println!("No tags found.");
+                    } else {
+                        println!("{:<30} {}", "Tag", "Message ID");
+                        println!("{:<30} {:-<10}", "", "");
+                        for tag in tags {
+                            println!("{:<30} {}", tag.name, tag.message_id);
+                        }
+                    }
+                }
             },
             Command::List => {
                 let leaves = db::get_leaf_messages(&conn)?;

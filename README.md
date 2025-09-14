@@ -102,6 +102,14 @@ retort tag delete my-feature
 
 The command will output the message ID that the tag was pointing to, so you can re-tag it if you made a mistake.
 
+#### Listing Tags
+
+To see all tags and which message ID they point to, use `tag list`.
+
+```bash
+retort tag list
+```
+
 ### Viewing Chat History
 
 To view the full history of a conversation, use the `history` subcommand.

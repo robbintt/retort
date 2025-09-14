@@ -276,6 +276,15 @@ fn test_tag_command() -> Result<()> {
         assert_eq!(tagged_id, 2);
     }
 
+    // Test `retort tag list`
+    let expected_list = "Tag                            Message ID\n------------------------------ ----------\nmy-tag                         2\n";
+    Command::cargo_bin("retort")?
+        .args(["tag", "list"])
+        .env("HOME", home_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::diff(expected_list));
+
     // Test 3: Tag a non-existent message
     Command::cargo_bin("retort")?
         .args(["tag", "set", "my-tag", "-m", "99"])
@@ -300,6 +309,14 @@ fn test_tag_command() -> Result<()> {
         let tagged_id = retort::db::get_message_id_by_tag(&conn, "my-tag")?;
         assert!(tagged_id.is_none());
     }
+
+    // Test that list is empty
+    Command::cargo_bin("retort")?
+        .args(["tag", "list"])
+        .env("HOME", home_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("No tags found."));
 
     // Test 5: Delete non-existent tag
     Command::cargo_bin("retort")?
