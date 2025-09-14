@@ -170,8 +170,11 @@ pub async fn run() -> anyhow::Result<()> {
                     }
                 }
 
+                const PROMPT_METADATA: &str = r#"{"system_prompt": "aider_default"}"#;
+
                 // Add user message
-                let user_message_id = db::add_message(&conn, parent_id, "user", &prompt)?;
+                let user_message_id =
+                    db::add_message(&conn, parent_id, "user", &prompt, Some(PROMPT_METADATA))?;
                 println!("Added user message with ID: {}", user_message_id);
 
                 // Get conversation history to build prompt
@@ -229,6 +232,7 @@ pub async fn run() -> anyhow::Result<()> {
                     Some(user_message_id),
                     "assistant",
                     &assistant_response,
+                    Some(PROMPT_METADATA),
                 )?;
                 println!("Added assistant message with ID: {}", assistant_message_id);
 

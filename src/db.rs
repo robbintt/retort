@@ -136,10 +136,11 @@ pub fn add_message(
     parent_id: Option<i64>,
     role: &str,
     content: &str,
+    metadata: Option<&str>,
 ) -> Result<i64> {
     conn.execute(
-        "INSERT INTO messages (parent_id, role, content) VALUES (?1, ?2, ?3)",
-        (parent_id, role, content),
+        "INSERT INTO messages (parent_id, role, content, metadata) VALUES (?1, ?2, ?3, ?4)",
+        (parent_id, role, content, metadata),
     )?;
     Ok(conn.last_insert_rowid())
 }

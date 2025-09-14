@@ -24,14 +24,24 @@ fn test_list_chats_format_and_logic() -> Result<()> {
     {
         let conn = retort::db::setup(db_path.to_str().unwrap())?;
         // user asks, assistant responds. Preview should be "Hello user".
-        let user_msg_id = retort::db::add_message(&conn, None, "user", "Hello user")?;
-        let assistant_msg_id =
-            retort::db::add_message(&conn, Some(user_msg_id), "assistant", "Hello assistant")?;
+        let user_msg_id = retort::db::add_message(&conn, None, "user", "Hello user", None)?;
+        let assistant_msg_id = retort::db::add_message(
+            &conn,
+            Some(user_msg_id),
+            "assistant",
+            "Hello assistant",
+            None,
+        )?;
         retort::db::set_chat_tag(&conn, "test-chat", assistant_msg_id)?;
 
         // another conversation, no user message. Preview should be the assistant message.
-        let assistant_msg_id_2 =
-            retort::db::add_message(&conn, None, "assistant", "Standalone assistant message")?;
+        let assistant_msg_id_2 = retort::db::add_message(
+            &conn,
+            None,
+            "assistant",
+            "Standalone assistant message",
+            None,
+        )?;
         retort::db::set_chat_tag(&conn, "another-chat", assistant_msg_id_2)?;
     }
 
@@ -71,8 +81,14 @@ fn test_history_command() -> Result<()> {
     {
         let conn = retort::db::setup(db_path.to_str().unwrap())?;
         // user -> assistant. Tagged 'chat1'
-        let u1 = retort::db::add_message(&conn, None, "user", "User message 1")?;
-        let a1 = retort::db::add_message(&conn, Some(u1), "assistant", "Assistant message 1")?;
+        let u1 = retort::db::add_message(&conn, None, "user", "User message 1", None)?;
+        let a1 = retort::db::add_message(
+            &conn,
+            Some(u1),
+            "assistant",
+            "Assistant message 1",
+            None,
+        )?;
         retort::db::set_chat_tag(&conn, "chat1", a1)?;
     }
 
@@ -155,8 +171,8 @@ fn test_send_command() -> Result<()> {
     let initial_leaf_id;
     {
         let conn = retort::db::setup(db_path.to_str().unwrap())?;
-        let u1 = retort::db::add_message(&conn, None, "user", "user 1")?;
-        let a1 = retort::db::add_message(&conn, Some(u1), "assistant", "assistant 1")?;
+        let u1 = retort::db::add_message(&conn, None, "user", "user 1", None)?;
+        let a1 = retort::db::add_message(&conn, Some(u1), "assistant", "assistant 1", None)?;
         retort::db::set_chat_tag(&conn, "my-chat", a1)?;
         initial_leaf_id = a1;
     }
@@ -242,8 +258,8 @@ fn test_tag_command() -> Result<()> {
     // Setup: create messages
     {
         let conn = retort::db::setup(db_path.to_str().unwrap())?;
-        retort::db::add_message(&conn, None, "user", "user 1")?;
-        retort::db::add_message(&conn, None, "user", "user 2")?;
+        retort::db::add_message(&conn, None, "user", "user 1", None)?;
+        retort::db::add_message(&conn, None, "user", "user 2", None)?;
     }
 
     // Test 1: retort tag set my-tag -m 1
