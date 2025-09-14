@@ -1,4 +1,4 @@
-use clap::{Args as ClapArgs, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 
 pub mod config;
 pub mod db;
