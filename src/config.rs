@@ -39,10 +39,15 @@ pub fn load() -> Result<Config> {
 mod tests {
     use super::*;
     use std::env;
+    use std::sync::Mutex;
     use tempfile::tempdir;
+
+    // Mutex to serialize tests that modify environment variables, preventing race conditions.
+    static ENV_MUTEX: Mutex<()> = Mutex::new(());
 
     #[test]
     fn test_load_default_config() -> Result<()> {
+        let _lock = ENV_MUTEX.lock().unwrap();
         let temp_dir = tempdir()?;
         env::set_var("HOME", temp_dir.path());
 
@@ -55,6 +60,7 @@ mod tests {
 
     #[test]
     fn test_load_from_yaml() -> Result<()> {
+        let _lock = ENV_MUTEX.lock().unwrap();
         let temp_dir = tempdir()?;
         env::set_var("HOME", temp_dir.path());
         let config_dir = temp_dir.path().join(".retort");
@@ -70,6 +76,7 @@ mod tests {
 
     #[test]
     fn test_load_with_tilde_expansion_in_config() -> Result<()> {
+        let _lock = ENV_MUTEX.lock().unwrap();
         let temp_dir = tempdir()?;
         env::set_var("HOME", temp_dir.path());
         let config_dir = temp_dir.path().join(".retort");
