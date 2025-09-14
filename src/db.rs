@@ -34,6 +34,20 @@ pub fn setup(db_path_str: &str) -> Result<Connection> {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
             FOREIGN KEY (message_id) REFERENCES messages (id)
         );
+
+        CREATE TABLE IF NOT EXISTS chat_tags (
+            tag TEXT PRIMARY KEY NOT NULL,
+            message_id INTEGER NOT NULL,
+            FOREIGN KEY (message_id) REFERENCES messages (id)
+        );
+
+        CREATE TABLE IF NOT EXISTS profiles (
+            id INTEGER PRIMARY KEY,
+            name TEXT UNIQUE NOT NULL,
+            active_chat_tag TEXT
+        );
+
+        INSERT OR IGNORE INTO profiles (name) VALUES ('default');
         ",
     )?;
 
@@ -82,4 +96,40 @@ pub fn add_message(
         (parent_id, role, content),
     )?;
     Ok(conn.last_insert_rowid())
+}
+
+pub fn get_message_id_by_tag(conn: &Connection, tag: &str) -> Result<Option<i64>> {
+    let mut stmt = conn.prepare("SELECT message_id FROM chat_tags WHERE tag = ?1")?;
+    let mut rows = stmt.query_map([tag], |row| row.get(0))?;
+    if let Some(id_result) = rows.next() {
+        Ok(Some(id_result?))
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn set_chat_tag(conn: &Connection, tag: &str, message_id: i64) -> Result<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO chat_tags (tag, message_id) VALUES (?1, ?2)",
+        (tag, message_id),
+    )?;
+    Ok(())
+}
+
+pub fn get_active_chat_tag(conn: &Connection) -> Result<Option<String>> {
+    let mut stmt = conn.prepare("SELECT active_chat_tag FROM profiles WHERE name = 'default'")?;
+    let mut rows = stmt.query_map([], |row| row.get(0))?;
+    if let Some(tag_result) = rows.next() {
+        Ok(tag_result?)
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn set_active_chat_tag(conn: &Connection, tag: &str) -> Result<()> {
+    conn.execute(
+        "UPDATE profiles SET active_chat_tag = ?1 WHERE name = 'default'",
+        [tag],
+    )?;
+    Ok(())
 }
