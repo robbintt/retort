@@ -40,12 +40,14 @@ fn test_list_chats_format_and_logic() -> Result<()> {
 
     // Assertions
     // Note: The order is descending by creation date, so message 3 comes first.
+    let header1 = "ID    Tag                  Last User Message";
+    let header2 = "----- -------------------- ----------------------------------------------------------------------";
     let expected_output1 = "3     another-chat         Standalone assistant message";
     let expected_output2 = "2     test-chat            Hello user";
 
     cmd.assert().success().stdout(predicate::str::diff(format!(
-        "{}\n{}\n",
-        expected_output1, expected_output2
+        "{}\n{}\n{}\n{}\n",
+        header1, header2, expected_output1, expected_output2
     )));
 
     Ok(())
