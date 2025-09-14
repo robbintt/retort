@@ -15,3 +15,6 @@ shellexpand = "3.1"
 assert_cmd = "2.0"
 predicates = "3.1"
 tempfile = "3.10.1"
+
+[profile.release]
+strip = true # Automatically strip symbols from the binary.
