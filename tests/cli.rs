@@ -267,7 +267,9 @@ fn test_tag_command() -> Result<()> {
         .env("HOME", home_dir)
         .assert()
         .success()
-        .stdout(predicate::str::contains("Tagged message 2 with 'my-tag'"));
+        .stdout(predicate::str::contains(
+            "Moved tag 'my-tag' from message 1 to 2.",
+        ));
 
     // Verify tag was moved
     {
@@ -275,6 +277,16 @@ fn test_tag_command() -> Result<()> {
         let tagged_id = retort::db::get_message_id_by_tag(&conn, "my-tag")?.unwrap();
         assert_eq!(tagged_id, 2);
     }
+
+    // Test re-tagging the same message
+    Command::cargo_bin("retort")?
+        .args(["tag", "set", "my-tag", "-m", "2"])
+        .env("HOME", home_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Tag 'my-tag' already points to message 2.",
+        ));
 
     // Test `retort tag list`
     let expected_list = "Tag                            Message ID\n------------------------------ ----------\nmy-tag                         2\n";

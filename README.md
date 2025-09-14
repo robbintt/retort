@@ -90,7 +90,7 @@ To create a tag or move an existing tag to a new message, use `tag set`.
 retort tag set my-feature -m 1
 ```
 
-Tags are unique. If you set a tag that already exists, it will be moved to the new message ID.
+Tags are unique. If you set a tag that already exists, it will be moved to the new message ID, and the command will notify you which message it was moved from.
 
 #### Deleting a Tag
 

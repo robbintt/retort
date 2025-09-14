@@ -24,8 +24,20 @@ pub async fn run() -> anyhow::Result<()> {
                     if !db::message_exists(&conn, message)? {
                         anyhow::bail!("Message with ID '{}' not found.", message);
                     }
-                    db::set_chat_tag(&conn, &tag, message)?;
-                    println!("Tagged message {} with '{}'", message, tag);
+                    let old_message_id = db::get_message_id_by_tag(&conn, &tag)?;
+                    match old_message_id {
+                        Some(old_id) if old_id == message => {
+                            println!("Tag '{}' already points to message {}.", tag, message);
+                        }
+                        Some(old_id) => {
+                            db::set_chat_tag(&conn, &tag, message)?;
+                            println!("Moved tag '{}' from message {} to {}.", tag, old_id, message);
+                        }
+                        None => {
+                            db::set_chat_tag(&conn, &tag, message)?;
+                            println!("Tagged message {} with '{}'", message, tag);
+                        }
+                    }
                 }
                 TagSubcommand::Delete { tag } => {
                     if let Some(message_id) = db::delete_chat_tag(&conn, &tag)? {
