@@ -82,13 +82,8 @@ fn test_history_command() -> Result<()> {
         let conn = retort::db::setup(db_path.to_str().unwrap())?;
         // user -> assistant. Tagged 'chat1'
         let u1 = retort::db::add_message(&conn, None, "user", "User message 1", None)?;
-        let a1 = retort::db::add_message(
-            &conn,
-            Some(u1),
-            "assistant",
-            "Assistant message 1",
-            None,
-        )?;
+        let a1 =
+            retort::db::add_message(&conn, Some(u1), "assistant", "Assistant message 1", None)?;
         retort::db::set_chat_tag(&conn, "chat1", a1)?;
     }
 
