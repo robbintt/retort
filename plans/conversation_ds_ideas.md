@@ -3,3 +3,8 @@ This is pretty good, I think we need to rethink the data model. We need to be ab
 There is also an edit mode I want to keep track of. This means actually modifying the history, including the LLM response of a message. However, this would not actually edit our database messages, instead, it would create a branch in the history at the point of the edit... but, this could introduce branching management bidirectionally, e.g. if we were to edit the first response in a 20 message exchange, we would essentially need to have the new history item also point to its parent and child nodes. This means we would have multiple references on each node.  On the other hand, we could have some system that identifies peer messages in a single data object, but only some of the peers would have child messages, so i think that is worse.  I think the simplest from data persepctive is multiple parents and children, but it creates a challenge when constructing the history. 
 
 Let's think from the user message, the user would probably want to have a distinct "conversation" object, and if they have a divergent history, it would be viewable as a new "conversation".   We can construct these conversations on the fly but with multiple parents and children, they may become combinatorial.
+
+---
+*2025-09-14*
+
+It seems like we only need singly linked, where the parentless nodes are the roots, and all nodes are the leaves, however, then we are not able to easily understand which messages start the conversation. We essentially can construct a conversation per leaf, plus a conversation for each multiple parent in any conversation tree. it helps if we invert it, so the latest message is the root, and the first message in a conversation is the leaves...
