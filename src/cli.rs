@@ -17,44 +17,44 @@ pub enum Command {
     Profile {
         /// Set the active chat tag for the default profile
         #[arg(long)]
-        pub active_chat: Option<String>,
+        active_chat: Option<String>,
     },
     /// Show the history of a chat
     History {
         /// The tag or message ID to show history for. Defaults to the active tag.
-        pub target: Option<String>,
+        target: Option<String>,
 
         /// Explicitly treat the target as a tag
         #[arg(short, long)]
-        pub tag: bool,
+        tag: bool,
 
         /// Explicitly treat the target as a message ID
         #[arg(short, long)]
-        pub message: bool,
+        message: bool,
     },
     /// Send a prompt to the model
     Send {
         /// The prompt to send
-        pub prompt: String,
+        prompt: String,
 
         /// The parent message ID to continue from. Creates a new branch and does not update any tags.
         #[arg(long, conflicts_with_all = &["new", "chat"])]
-        pub parent: Option<i64>,
+        parent: Option<i64>,
 
         /// The chat tag to continue from.
         #[arg(long, conflicts_with = "new")]
-        pub chat: Option<String>,
+        chat: Option<String>,
 
         /// Start a new chat, ignoring the active chat tag.
         #[arg(long)]
-        pub new: bool,
+        new: bool,
 
         /// Stream the response (overrides config).
         #[arg(long, conflicts_with = "no_stream")]
-        pub stream: bool,
+        stream: bool,
 
         /// Do not stream the response (overrides config).
         #[arg(long)]
-        pub no_stream: bool,
+        no_stream: bool,
     },
 }
