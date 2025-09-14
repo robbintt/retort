@@ -1,5 +1,5 @@
-use clap::{Parser, Subcommand};
 use ::llm::chat::{ChatMessage, ChatRole};
+use clap::{Parser, Subcommand};
 
 pub mod config;
 pub mod db;

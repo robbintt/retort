@@ -1,8 +1,8 @@
-use anyhow::Result;
 use ::llm::{
     builder::{LLMBackend, LLMBuilder},
     chat::ChatMessage,
 };
+use anyhow::Result;
 
 pub async fn get_response(messages: &[ChatMessage]) -> Result<String> {
     // Get Google API key from environment variable.
