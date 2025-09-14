@@ -1,5 +1,5 @@
 use anyhow::Result;
-use llm::{
+use ::llm::{
     builder::{LLMBackend, LLMBuilder},
     chat::ChatMessage,
 };
