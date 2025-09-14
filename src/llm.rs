@@ -31,7 +31,9 @@ pub async fn get_response_stream(
 
     let stream = llm.chat_stream(messages).await?;
 
-    Ok(Box::pin(stream.map(|item| item.map_err(anyhow::Error::from))))
+    Ok(Box::pin(
+        stream.map(|item| item.map_err(anyhow::Error::from)),
+    ))
 }
 
 pub async fn get_response(messages: &[ChatMessage]) -> Result<String> {
