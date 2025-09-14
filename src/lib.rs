@@ -65,19 +65,24 @@ pub fn run() -> anyhow::Result<()> {
             }
         }
     } else if cli.prompt_args.list_chats {
-        let messages = db::get_leaf_messages(&conn)?;
-        for message in messages {
-            let truncated_content: String = message.content.chars().take(100).collect();
-            let tag_display = message
-                .tag
-                .map(|t| format!(" (Tag: {})", t))
-                .unwrap_or_else(|| "".to_string());
+        let leaves = db::get_leaf_messages(&conn)?;
+        for leaf in leaves {
+            let history = db::get_conversation_history(&conn, leaf.id)?;
+            let last_user_message = history.iter().filter(|m| m.role == "user").last();
+
+            let preview_content = last_user_message
+                .map(|m| m.content.clone())
+                .unwrap_or(leaf.content);
+
+            let truncated_content: String = preview_content.chars().take(70).collect();
+            let one_line_content = truncated_content.replace('\n', " ");
+
+            let tag_display = leaf.tag.as_deref().unwrap_or("-");
+
+            // Produces a clean, column-based output that is easy to parse with standard tools.
             println!(
-                "[{}] {} (ID: {}){}",
-                message.created_at,
-                truncated_content.replace('\n', " "),
-                message.id,
-                tag_display
+                "{:<5} {:<20} {}",
+                leaf.id, tag_display, one_line_content
             );
         }
     } else if let Some(prompt) = cli.prompt_args.prompt {

@@ -54,14 +54,20 @@ pub fn setup(db_path_str: &str) -> Result<Connection> {
     Ok(conn)
 }
 
-pub struct Message {
+pub struct Leaf {
     pub id: i64,
     pub created_at: String,
     pub content: String,
     pub tag: Option<String>,
 }
 
-pub fn get_leaf_messages(conn: &Connection) -> Result<Vec<Message>> {
+pub struct HistoryMessage {
+    pub role: String,
+    pub content: String,
+    pub created_at: String,
+}
+
+pub fn get_leaf_messages(conn: &Connection) -> Result<Vec<Leaf>> {
     let mut stmt = conn.prepare(
         "
         SELECT m1.id, m1.created_at, m1.content, ct.tag
@@ -73,11 +79,45 @@ pub fn get_leaf_messages(conn: &Connection) -> Result<Vec<Message>> {
     )?;
 
     let messages_iter = stmt.query_map([], |row| {
-        Ok(Message {
+        Ok(Leaf {
             id: row.get(0)?,
             created_at: row.get(1)?,
             content: row.get(2)?,
             tag: row.get(3)?,
+        })
+    })?;
+
+    let mut messages = Vec::new();
+    for message in messages_iter {
+        messages.push(message?);
+    }
+    Ok(messages)
+}
+
+pub fn get_conversation_history(
+    conn: &Connection,
+    leaf_id: i64,
+) -> Result<Vec<HistoryMessage>> {
+    let mut stmt = conn.prepare(
+        "
+        WITH RECURSIVE ancestors AS (
+            SELECT id, parent_id, role, content, created_at
+            FROM messages
+            WHERE id = ?1
+            UNION ALL
+            SELECT m.id, m.parent_id, m.role, m.content, m.created_at
+            FROM messages m
+            JOIN ancestors a ON m.id = a.parent_id
+        )
+        SELECT role, content, created_at FROM ancestors ORDER BY created_at ASC;
+        ",
+    )?;
+
+    let messages_iter = stmt.query_map([leaf_id], |row| {
+        Ok(HistoryMessage {
+            role: row.get(0)?,
+            content: row.get(1)?,
+            created_at: row.get(2)?,
         })
     })?;
 
