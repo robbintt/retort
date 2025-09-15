@@ -2,6 +2,8 @@
 
 This plan outlines the work required to implement file management, allowing users to add read-write and read-only files to the chat context, based on the design in `plans/file-management.md`. The implementation will be broken down into testable phases. Each task is designed to be self-contained to facilitate execution by an AI assistant.
 
+The core of this system is a persistent "context stage," which holds lists of files to be included in the prompt. Users will manage this stage via a `retort stage` command. When a message is sent, the staged files are read and injected into the prompt. To ensure context persists across a conversation, the file list (along with content hashes) is stored in the message's metadata. This "inherited context" is then automatically loaded into the stage for the next message in the same chat thread, allowing for a cumulative file context.
+
 ## Phase 1: Database and Core Data Structures for Context
 
 This phase focuses on setting up the database schema and data structures for managing a persistent "context stage". This stage will hold file paths that are to be included in prompts.
@@ -72,11 +74,11 @@ This phase introduces the `retort stage` command, allowing users to manage the f
       pub read_only: bool,
 
       /// Remove the file from the context stage.
-      #[arg(short, long, FKA="drop")]
-      pub remove: bool,
+      #[arg(long, short = 'd')]
+      pub drop: bool,
 
       /// List all files in the context stage.
-      #[arg(long, conflicts_with_all = &["file_path", "read_only", "remove"])]
+      #[arg(long, conflicts_with_all = &["file_path", "read_only", "drop"])]
       pub list: bool,
   }
   ```
@@ -89,7 +91,7 @@ This phase introduces the `retort stage` command, allowing users to manage the f
       if args.list {
           // Get and print the stage contents.
       } else if let Some(file_path) = args.file_path {
-          if args.remove {
+          if args.drop {
               // Call db::remove_file_from_stage and print confirmation.
           } else {
               // Call db::add_file_to_stage and print confirmation.
