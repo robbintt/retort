@@ -153,6 +153,119 @@ This phase adds safety via a project root, snapshots the file context in message
 
 This final phase removes obsolete code and improves documentation.
 
-- [ ] **Task 5.1: Remove `files` Table.** In `src/db.rs`, remove the `CREATE TABLE files` statement from the schema in the `setup` function. Also remove any related, now-unused functions that referenced it.
+- [x] **Task 5.1: Remove `files` Table.** In `src/db.rs`, remove the `CREATE TABLE files` statement from the schema in the `setup` function. Also remove any related, now-unused functions that referenced it.
 
-- [ ] **Task 5.2: Update Documentation.** Update `ai.md` and `README.md` to document the new `retort stage` and `retort project` commands and the overall file management workflow.
+- [x] **Task 5.2: Update Documentation.** Update `ai.md` and `README.md` to document the new `retort stage` and `retort project` commands and the overall file management workflow.
+
+## Phase 6: Manual End-to-End Testing
+
+This phase provides a script for manually verifying the complete file context management workflow.
+
+**Setup:**
+
+1.  Create a fresh, temporary directory for the test and navigate into it.
+    ```bash
+    mkdir /tmp/retort-manual-test
+    cd /tmp/retort-manual-test
+    ```
+2.  Initialize a Git repository.
+    ```bash
+    git init
+    ```
+3.  Create some test files.
+    ```bash
+    echo "This is file one." > file1.txt
+    echo "This is file two." > file2.txt
+    echo "This is file three." > file3.txt
+    git add .
+    git commit -m "Initial commit"
+    ```
+4.  Build the `retort` binary if you haven't already. The following commands assume it's at `../../target/debug/retort`.
+5.  Set the project root to your test directory.
+    ```bash
+    ../../target/debug/retort profile --set-project-root .
+    ```
+
+**Test Steps:**
+
+1.  **Staging Files and Initial Prompt**
+    -   Stage `file1.txt` as read-write and `file2.txt` as read-only.
+        ```bash
+        ../../target/debug/retort stage file1.txt
+        ../../target/debug/retort stage -r file2.txt
+        ```
+    -   Verify the stage status. The output should show both files in the "Prepared Context" and an empty "Inherited Context".
+        ```bash
+        ../../target/debug/retort stage
+        ```
+    -   Send a prompt asking for a change. Note: You need a valid `GOOGLE_API_KEY` for this step.
+        ```bash
+        ../../target/debug/retort send "Append the text 'MODIFIED' to file1.txt. Then, confirm you can read file2.txt by stating its content."
+        ```
+    -   **Verification:**
+        -   The tool should print a `CONTEXT` view showing `file1.txt` and `file2.txt` before sending.
+        -   The LLM should output a `SEARCH/REPLACE` block to modify `file1.txt`.
+        -   Check the content of `file1.txt`. It should now be `This is file one.MODIFIED\n`.
+        -   Check the git log (`git log -1 -p`). There should be a new commit modifying `file1.txt`.
+
+2.  **Context Inheritance**
+    -   Check the stage status again.
+        ```bash
+        ../../target/debug/retort stage
+        ```
+    -   **Verification:** The "Inherited Context" should now list `file1.txt` (read-write) and `file2.txt` (read-only). The "Prepared Context" should be empty.
+    -   Stage a new file.
+        ```bash
+        ../../target/debug/retort stage file3.txt
+        ```
+    -   Send a new prompt that uses both inherited and prepared context.
+        ```bash
+        ../../target/debug/retort send "Append the text 'ALSO MODIFIED' to file3.txt and verify you can still see the original content of file2.txt."
+        ```
+    -   **Verification:**
+        -   The `CONTEXT` view should show the inherited files and the newly prepared `file3.txt`.
+        -   The LLM should propose changes to `file3.txt`.
+        -   Check the content of `file3.txt`. It should be updated.
+        -   Check the git log for a new commit.
+
+3.  **Ignoring Inherited Context**
+    -   Check the stage. The inherited context should now contain all three files from the previous chat turn.
+        ```bash
+        ../../target/debug/retort stage
+        ```
+    -   Stage only `file2.txt` for a clean context, then send a prompt using the `--ignore-inherited-stage` (`-i`) flag.
+        ```bash
+        ../../target/debug/retort stage -d file1.txt
+        ../../target/debug/retort stage -d file3.txt
+        ../../target/debug/retort stage -r file2.txt # Re-add file2 as read-only
+        ../../target/debug/retort send -i "You should only see file2.txt. What is its content?"
+        ```
+    -   **Verification:**
+        -   The `CONTEXT` view should *only* list `file2.txt`.
+        -   The LLM response should confirm it only sees `file2.txt`.
+    -   Check the stage again. The new inherited context for this chat branch should *only* contain `file2.txt`.
+        ```bash
+        ../../target/debug/retort stage
+        ```
+
+4.  **Project Root Enforcement**
+    -   Create a file outside the project root.
+        ```bash
+        echo "secret info" > /tmp/secret.txt
+        ```
+    -   Stage this file.
+        ```bash
+        ../../target/debug/retort stage /tmp/secret.txt
+        ```
+    -   Attempt to have the LLM modify it.
+        ```bash
+        ../../target/debug/retort send "Append 'MODIFIED' to /tmp/secret.txt"
+        ```
+    -   **Verification:** The command should fail with an error message stating that the file is outside the project root. The file `/tmp/secret.txt` should not be modified.
+
+**Cleanup:**
+
+1.  Remove the temporary directory.
+    ```bash
+    rm -rf /tmp/retort-manual-test /tmp/secret.txt
+    ```
