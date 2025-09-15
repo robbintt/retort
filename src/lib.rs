@@ -105,9 +105,7 @@ pub async fn run() -> anyhow::Result<()> {
                     // 1. Get inherited context
                     let mut inherited_stage: MessageMetadata = Default::default();
                     if let Some(tag) = db::get_active_chat_tag(&conn)? {
-                        if let Some(assistant_message_id) =
-                            db::get_message_id_by_tag(&conn, &tag)?
-                        {
+                        if let Some(assistant_message_id) = db::get_message_id_by_tag(&conn, &tag)? {
                             if let Some(user_message_id) =
                                 db::get_parent_id(&conn, assistant_message_id)?
                             {
