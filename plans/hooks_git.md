@@ -59,3 +59,87 @@ This document outlines the step-by-step plan to implement a post-processor hook 
     - [x] Verify that the content of `test-file.txt` on disk has been updated according to the diff.
     - [x] Use `git` commands within the test to confirm that a new commit has been created.
     - [x] Verify that the commit message of the new commit matches the message from the mock LLM response.
+
+## Manual Testing Protocol
+
+This protocol describes how to manually test the Git post-processor hook.
+
+1.  **Build the Project:**
+    Ensure you have the latest version of the `retort` binary.
+    ```bash
+    cargo build
+    ```
+
+2.  **Set Up a Test Environment:**
+    Create a temporary directory for the test. This will contain both the test git repository and the `retort` home directory, keeping the test self-contained.
+
+    ```bash
+    # Create a temporary directory and navigate into it
+    export TEST_DIR=/tmp/retort-manual-test
+    mkdir -p $TEST_DIR
+    cd $TEST_DIR
+
+    # Initialize a Git repository
+    git init
+    git config user.name "Test User"
+    git config user.email "test@example.com"
+
+    # Create and commit a file to modify
+    echo "Initial content" > test-file.txt
+    git add test-file.txt
+    git commit -m "Initial commit"
+    ```
+
+3.  **Prepare the Mock LLM Response:**
+    While inside `$TEST_DIR`, create a file named `mock_response.txt` with the following content. This simulates the output from the LLM that contains a diff.
+
+    ````text
+    feat: update test file via manual test
+
+    This commit is generated from a manual test.
+
+    test-file.txt
+    ```diff
+    --- a/test-file.txt
+    +++ b/test-file.txt
+    @@ -1 +1 @@
+    -Initial content
+    +Updated content
+
+    ```
+    ````
+
+4.  **Run `retort`:**
+    Execute the `retort send` command from within `$TEST_DIR`. You will need to provide the full path to your `retort` binary. We will also override the `HOME` environment variable to prevent `retort` from using your default config/database.
+
+    ```bash
+    # Set the path to your retort project root.
+    # Replace this with the actual path on your machine.
+    export RETORT_PROJECT_PATH=path/to/your/retort/project
+
+    # Run the command with a mocked response and an isolated HOME directory
+    MOCK_LLM_CONTENT=$(cat mock_response.txt) \
+    HOME=$TEST_DIR \
+    $RETORT_PROJECT_PATH/target/debug/retort send --new "make a change"
+    ```
+    You should see output indicating that a patch was applied and a commit was made.
+
+5.  **Verify the Results:**
+    Check that the file content has been updated and a new Git commit has been created.
+
+    ```bash
+    # Check the file content
+    cat test-file.txt
+    # Expected output: Updated content
+
+    # Check the latest git commit message
+    git log -1 --pretty=%B
+    # Expected output should start with "feat: update test file via manual test"
+    ```
+
+6.  **Clean Up:**
+    ```bash
+    # When you are done, you can remove the test directory
+    cd ~
+    rm -rf $TEST_DIR
+    ```
