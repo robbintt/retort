@@ -45,7 +45,8 @@ pub fn setup(db_path_str: &str) -> Result<Connection> {
         CREATE TABLE IF NOT EXISTS profiles (
             id INTEGER PRIMARY KEY,
             name TEXT UNIQUE NOT NULL,
-            active_chat_tag TEXT
+            active_chat_tag TEXT,
+            project_root TEXT
         );
 
         INSERT OR IGNORE INTO profiles (name) VALUES ('default');
@@ -222,16 +223,18 @@ pub fn message_exists(conn: &Connection, id: i64) -> Result<bool> {
 pub struct Profile {
     pub name: String,
     pub active_chat_tag: Option<String>,
+    pub project_root: Option<String>,
 }
 
 pub fn get_profile_by_name(conn: &Connection, name: &str) -> Result<Profile> {
     conn.query_row(
-        "SELECT name, active_chat_tag FROM profiles WHERE name = ?1",
+        "SELECT name, active_chat_tag, project_root FROM profiles WHERE name = ?1",
         [name],
         |row| {
             Ok(Profile {
                 name: row.get(0)?,
                 active_chat_tag: row.get(1)?,
+                project_root: row.get(2)?,
             })
         },
     )
@@ -303,6 +306,32 @@ pub fn add_file_to_stage(
         file_list.push(file_path.to_string());
     }
 
+    update_context_stage(conn, &stage)
+}
+
+pub fn get_message_metadata(conn: &Connection, message_id: i64) -> Result<Option<String>> {
+    let mut stmt = conn.prepare("SELECT metadata FROM messages WHERE id = ?1")?;
+    let mut rows = stmt.query_map([message_id], |row| row.get(0))?;
+    if let Some(metadata_result) = rows.next() {
+        Ok(metadata_result?)
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn set_project_root(conn: &Connection, name: &str, path: &str) -> Result<()> {
+    conn.execute(
+        "UPDATE profiles SET project_root = ?1 WHERE name = ?2",
+        (path, name),
+    )?;
+    Ok(())
+}
+
+pub fn clear_context_stage(conn: &Connection, name: &str) -> Result<()> {
+    let stage = ContextStage {
+        name: name.to_string(),
+        ..Default::default()
+    };
     update_context_stage(conn, &stage)
 }
 

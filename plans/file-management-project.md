@@ -133,7 +133,7 @@ This phase connects the file context stage to the prompt generation process.
 
 This phase adds safety via a project root, snapshots the file context in message metadata, and makes the context persist across turns.
 
-- [ ] **Task 4.1: Store Prompt Metadata.** In `src/lib.rs` (in `send`), create a serializable struct to hold file paths and their content hashes (e.g., SHA256). Populate it and serialize it to JSON. Store this JSON in the `metadata` column for the new `user` message. Have `sha2` and `serde_json` added to `Cargo.toml`.
+- [x] **Task 4.1: Store Prompt Metadata.** In `src/lib.rs` (in `send`), create a serializable struct to hold file paths and their content hashes (e.g., SHA256). Populate it and serialize it to JSON. Store this JSON in the `metadata` column for the new `user` message. Have `sha2` and `serde_json` added to `Cargo.toml`.
   ```rust
   #[derive(Serialize, Deserialize)]
   struct PromptMetadata { /* ... */ }
@@ -141,13 +141,13 @@ This phase adds safety via a project root, snapshots the file context in message
   struct FileMetadata { path: String, hash: String }
   ```
 
-- [ ] **Task 4.2: Add Project Root to Profile.** Integrate the project root into user profiles. This involves modifying the `setup` function in `src/db.rs` to add a `project_root TEXT` column to the `profiles` table, updating the `Profile` struct to include `pub project_root: Option<String>`, and updating database functions like `get_profile_by_name`. In `src/cli.rs`, add a `--set-project-root <path>` argument to the `Profile` command. Finally, implement the logic in `src/lib.rs` to store the absolute, canonicalized path in the 'default' profile.
+- [x] **Task 4.2: Add Project Root to Profile.** Integrate the project root into user profiles. This involves modifying the `setup` function in `src/db.rs` to add a `project_root TEXT` column to the `profiles` table, updating the `Profile` struct to include `pub project_root: Option<String>`, and updating database functions like `get_profile_by_name`. In `src/cli.rs`, add a `--set-project-root <path>` argument to the `Profile` command. Finally, implement the logic in `src/lib.rs` to store the absolute, canonicalized path in the 'default' profile.
 
 - [ ] **Task 4.3: Enforce Project Root.** The project root will be loaded from the default profile. In `src/hooks/postprocessor.rs`, update `apply_and_commit_changes` to accept an `Option<PathBuf>` for the project root. Before applying changes, it must verify that all file paths are within this directory. Update `HookManager` and `Hook` traits to pass this through.
 
-- [ ] **Task 4.4: Implement Context Inheritance.** In `src/lib.rs` (`send` command), after a message is sent, clear the 'default' (`prepared`) context stage. The full, merged context has already been saved to the new message's metadata in Task 4.1, and will be used as the `inherited` context for the next turn. If a new chat was started (`--new` or no active tag), the `prepared` stage should also be cleared to ensure a clean slate.
+- [x] **Task 4.4: Implement Context Inheritance.** In `src/lib.rs` (`send` command), after a message is sent, clear the 'default' (`prepared`) context stage. The full, merged context has already been saved to the new message's metadata in Task 4.1, and will be used as the `inherited` context for the next turn. If a new chat was started (`--new` or no active tag), the `prepared` stage should also be cleared to ensure a clean slate.
 
-- [ ] **Task 4.5: Add Integration Tests.** Add tests in `tests/cli.rs` for project root enforcement (using `retort profile --set-project-root`, then asserting failure when editing outside the root) and context inheritance (asserting that the stage persists between messages and is cleared on `--new`).
+- [x] **Task 4.5: Add Integration Tests.** Add tests in `tests/cli.rs` for project root enforcement (using `retort profile --set-project-root`, then asserting failure when editing outside the root) and context inheritance (asserting that the stage persists between messages and is cleared on `--new`).
 
 ## Phase 5: Cleanup and Refinement
 

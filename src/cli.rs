@@ -35,6 +35,10 @@ pub enum Command {
         /// Set the active chat tag for the default profile
         #[arg(long)]
         active_chat: Option<String>,
+
+        /// Set the project root for the default profile
+        #[arg(long)]
+        set_project_root: Option<String>,
     },
     /// Show the history of a chat
     History {

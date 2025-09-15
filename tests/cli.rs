@@ -476,6 +476,139 @@ hello rust
 }
 
 #[test]
+fn test_profile_project_root() -> Result<()> {
+    let temp_dir = tempdir()?;
+    let home_dir = temp_dir.path();
+    let db_path = home_dir.join("test.db");
+
+    let config_dir = home_dir.join(".retort");
+    fs::create_dir_all(&config_dir)?;
+    let config_path = config_dir.join("config.yaml");
+    fs::write(
+        config_path,
+        format!("database_path: {}", db_path.to_str().unwrap()),
+    )?;
+    let _conn = retort::db::setup(db_path.to_str().unwrap())?;
+
+    let project_dir = tempdir()?;
+    let project_path = project_dir.path().canonicalize()?;
+    let project_path_str = project_path.to_str().unwrap();
+
+    // Set project root
+    Command::cargo_bin("retort")?
+        .args(["profile", "--set-project-root", project_path_str])
+        .env("HOME", home_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(format!(
+            "Set project root to: {}",
+            project_path_str
+        )));
+
+    // Verify it was set
+    Command::cargo_bin("retort")?
+        .arg("profile")
+        .env("HOME", home_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(format!(
+            "project_root: {}",
+            project_path_str
+        )));
+
+    Ok(())
+}
+
+#[test]
+fn test_context_inheritance() -> Result<()> {
+    let temp_dir = tempdir()?;
+    let home_dir = temp_dir.path();
+    let db_path = home_dir.join("test.db");
+
+    let config_dir = home_dir.join(".retort");
+    fs::create_dir_all(&config_dir)?;
+    let config_path = config_dir.join("config.yaml");
+    fs::write(
+        config_path,
+        format!("database_path: {}", db_path.to_str().unwrap()),
+    )?;
+    let _conn = retort::db::setup(db_path.to_str().unwrap())?;
+
+    // Create some dummy files to stage
+    fs::write(temp_dir.path().join("file1.txt"), "content1")?;
+    fs::write(temp_dir.path().join("file2.txt"), "content2")?;
+    fs::write(temp_dir.path().join("file3.txt"), "content3")?;
+
+    // 1. Stage file1, send msg1. Context should contain file1.
+    Command::cargo_bin("retort")?
+        .current_dir(temp_dir.path())
+        .args(["stage", "file1.txt"])
+        .env("HOME", &home_dir)
+        .assert()
+        .success();
+
+    Command::cargo_bin("retort")?
+        .current_dir(temp_dir.path())
+        .args(["send", "--new", "--chat", "inherit-test", "msg1"])
+        .env("HOME", &home_dir)
+        .env("MOCK_LLM", "1")
+        .assert()
+        .success()
+        .stdout(
+            predicate::str::contains("Inherited:\n  (empty)\nPrepared:\n  Read-Write:\n    - file1.txt")
+        );
+
+    // After send, prepared stage should be empty.
+    Command::cargo_bin("retort")?
+        .arg("stage")
+        .env("HOME", &home_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Prepared Context (for next message):\n  (empty)"));
+
+    // 2. Stage file2, send msg2 continuing chat. Context should have file1 (inherited) and file2 (prepared).
+    Command::cargo_bin("retort")?
+        .current_dir(temp_dir.path())
+        .args(["stage", "file2.txt"])
+        .env("HOME", &home_dir)
+        .assert()
+        .success();
+
+    Command::cargo_bin("retort")?
+        .current_dir(temp_dir.path())
+        .args(["send", "--chat", "inherit-test", "msg2"])
+        .env("HOME", &home_dir)
+        .env("MOCK_LLM", "1")
+        .assert()
+        .success()
+        .stdout(
+            predicate::str::contains("Inherited:\n  Read-Write:\n    - file1.txt\nPrepared:\n  Read-Write:\n    - file2.txt")
+        );
+
+    // 3. Stage file3, send msg3 but with --ignore-inherited-stage. Context should only have file3.
+    Command::cargo_bin("retort")?
+        .current_dir(temp_dir.path())
+        .args(["stage", "file3.txt"])
+        .env("HOME", &home_dir)
+        .assert()
+        .success();
+
+    Command::cargo_bin("retort")?
+        .current_dir(temp_dir.path())
+        .args(["send", "--chat", "inherit-test", "--ignore-inherited-stage", "msg3"])
+        .env("HOME", &home_dir)
+        .env("MOCK_LLM", "1")
+        .assert()
+        .success()
+        .stdout(
+            predicate::str::contains("Inherited:\n  (empty)\nPrepared:\n  Read-Write:\n    - file3.txt")
+        );
+
+
+    Ok(())
+}
+
+#[test]
 fn test_stage_command() -> Result<()> {
     let temp_dir = tempdir()?;
     let home_dir = temp_dir.path();

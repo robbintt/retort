@@ -1,8 +1,12 @@
 use ::llm::chat::ChatMessage;
 use clap::Parser;
 use futures::StreamExt;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::fs;
 use std::io::{stdout, Write};
+use std::path::PathBuf;
 
 pub mod cli;
 pub mod config;
@@ -13,6 +17,18 @@ pub mod prompt;
 
 use cli::{Cli, Command, TagSubcommand};
 use hooks::HookManager;
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct FileMetadata {
+    pub path: String,
+    pub hash: String, // sha256 hash of content
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct MessageMetadata {
+    pub read_write_files: Vec<FileMetadata>,
+    pub read_only_files: Vec<FileMetadata>,
+}
 
 pub async fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
@@ -86,22 +102,54 @@ pub async fn run() -> anyhow::Result<()> {
                         println!("Staged {} as {}.", file_path, file_type);
                     }
                 } else {
-                    // For now, just show prepared context. Inheritance is in a later phase.
-                    let stage = db::get_context_stage(&conn, "default")?;
-                    println!("Prepared Context (for next message):");
-                    if !stage.read_write_files.is_empty() {
+                    // 1. Get inherited context
+                    let mut inherited_stage: MessageMetadata = Default::default();
+                    if let Some(tag) = db::get_active_chat_tag(&conn)? {
+                        if let Some(parent_id) = db::get_message_id_by_tag(&conn, &tag)? {
+                            if let Some(metadata_json) =
+                                db::get_message_metadata(&conn, parent_id)?
+                            {
+                                inherited_stage = serde_json::from_str(&metadata_json)?;
+                            }
+                        }
+                    }
+                    println!("Inherited Context (from active chat):");
+                    if !inherited_stage.read_write_files.is_empty() {
                         println!("  Read-Write:");
-                        for file in &stage.read_write_files {
-                            println!("    - {}", file);
+                        for file in &inherited_stage.read_write_files {
+                            println!("    - {}", file.path);
                         }
                     }
-                    if !stage.read_only_files.is_empty() {
+                    if !inherited_stage.read_only_files.is_empty() {
                         println!("  Read-Only:");
-                        for file in &stage.read_only_files {
+                        for file in &inherited_stage.read_only_files {
+                            println!("    - {}", file.path);
+                        }
+                    }
+                    if inherited_stage.read_write_files.is_empty()
+                        && inherited_stage.read_only_files.is_empty()
+                    {
+                        println!("  (empty)");
+                    }
+
+                    // 2. Get prepared context
+                    let prepared_stage = db::get_context_stage(&conn, "default")?;
+                    println!("\nPrepared Context (for next message):");
+                    if !prepared_stage.read_write_files.is_empty() {
+                        println!("  Read-Write:");
+                        for file in &prepared_stage.read_write_files {
                             println!("    - {}", file);
                         }
                     }
-                    if stage.read_write_files.is_empty() && stage.read_only_files.is_empty() {
+                    if !prepared_stage.read_only_files.is_empty() {
+                        println!("  Read-Only:");
+                        for file in &prepared_stage.read_only_files {
+                            println!("    - {}", file);
+                        }
+                    }
+                    if prepared_stage.read_write_files.is_empty()
+                        && prepared_stage.read_only_files.is_empty()
+                    {
                         println!("  (empty)");
                     }
                 }
@@ -127,16 +175,44 @@ pub async fn run() -> anyhow::Result<()> {
                     println!("{:<5} {:<20} {}", leaf.id, tag_display, one_line_content);
                 }
             }
-            Command::Profile { active_chat } => {
+            Command::Profile {
+                active_chat,
+                set_project_root,
+            } => {
+                let mut modified = false;
                 if let Some(tag) = active_chat {
                     db::set_active_chat_tag(&conn, &tag)?;
                     println!("Set active chat tag to: {}", tag);
-                } else {
+                    modified = true;
+                }
+
+                if let Some(path_str) = set_project_root {
+                    let path = PathBuf::from(path_str);
+                    let canonical_path = path.canonicalize()?;
+                    db::set_project_root(
+                        &conn,
+                        "default",
+                        canonical_path.to_str().ok_or_else(|| {
+                            anyhow::anyhow!("Failed to convert project root path to string.")
+                        })?,
+                    )?;
+                    println!(
+                        "Set project root to: {}",
+                        canonical_path.to_string_lossy()
+                    );
+                    modified = true;
+                }
+
+                if !modified {
                     let profile = db::get_profile_by_name(&conn, "default")?;
                     println!("Active Profile: {}", profile.name);
                     println!(
                         "  active_chat_tag: {}",
                         profile.active_chat_tag.as_deref().unwrap_or("None")
+                    );
+                    println!(
+                        "  project_root: {}",
+                        profile.project_root.as_deref().unwrap_or("None")
                     );
                 }
             }
@@ -190,7 +266,7 @@ pub async fn run() -> anyhow::Result<()> {
                 new,
                 stream,
                 no_stream,
-                ignore_inherited_stage: _,
+                ignore_inherited_stage,
             } => {
                 let mut parent_id: Option<i64> = None;
                 let mut chat_tag_for_update: Option<String> = None;
@@ -212,50 +288,115 @@ pub async fn run() -> anyhow::Result<()> {
                     }
                 }
 
-                const PROMPT_METADATA: &str = r#"{"system_prompt": "aider_default"}"#;
-
-                // Add user message
-                let user_message_id =
-                    db::add_message(&conn, parent_id, "user", &prompt, Some(PROMPT_METADATA))?;
-                println!("Added user message with ID: {}", user_message_id);
-
                 // --- Prompt Assembly ---
-                // 1. Load file context
+                // 1. Get inherited context
+                let mut inherited_stage: MessageMetadata = Default::default();
+                if let Some(p_id) = parent_id {
+                    if !ignore_inherited_stage {
+                        if let Some(metadata_json) = db::get_message_metadata(&conn, p_id)? {
+                            if !metadata_json.is_empty() {
+                                inherited_stage = serde_json::from_str(&metadata_json)?;
+                            }
+                        }
+                    }
+                }
+
+                // 2. Get prepared context
                 let prepared_stage = db::get_context_stage(&conn, "default")?;
-                let mut read_write_files = Vec::new();
+
+                // 3. Merge contexts. Prepared takes precedence.
+                let mut final_context_map: HashMap<String, bool> = HashMap::new(); // path -> is_readonly
+                for file in &inherited_stage.read_write_files {
+                    final_context_map.insert(file.path.clone(), false);
+                }
+                for file in &inherited_stage.read_only_files {
+                    final_context_map.insert(file.path.clone(), true);
+                }
                 for path in &prepared_stage.read_write_files {
-                    let content = fs::read_to_string(path)?;
-                    read_write_files.push((path.clone(), content));
+                    final_context_map.insert(path.clone(), false);
                 }
-
-                let mut read_only_files = Vec::new();
                 for path in &prepared_stage.read_only_files {
-                    let content = fs::read_to_string(path)?;
-                    read_only_files.push((path.clone(), content));
+                    final_context_map.insert(path.clone(), true);
                 }
 
-                // 2. Print context view for user
+                // 4. Load file contents and prepare for prompt, and build metadata
+                let mut read_write_files_prompt = Vec::new();
+                let mut read_only_files_prompt = Vec::new();
+                let mut metadata = MessageMetadata::default();
+
+                let mut paths: Vec<String> = final_context_map.keys().cloned().collect();
+                paths.sort(); // Sort for consistent order in prompt
+
+                for path in paths {
+                    let is_readonly = *final_context_map.get(&path).unwrap();
+                    let content = fs::read_to_string(&path)?;
+                    let mut hasher = Sha256::new();
+                    hasher.update(content.as_bytes());
+                    let hash = format!("{:x}", hasher.finalize());
+
+                    let file_metadata = FileMetadata {
+                        path: path.clone(),
+                        hash,
+                    };
+
+                    if is_readonly {
+                        read_only_files_prompt.push((path, content));
+                        metadata.read_only_files.push(file_metadata);
+                    } else {
+                        read_write_files_prompt.push((path, content));
+                        metadata.read_write_files.push(file_metadata);
+                    }
+                }
+
+                // 5. Print context view for user
                 println!("---");
                 println!("CONTEXT (for this message):");
-                println!("Prepared:");
-                if !read_write_files.is_empty() {
+                println!("Inherited:");
+                if !inherited_stage.read_write_files.is_empty() {
                     println!("  Read-Write:");
-                    for (path, _) in &read_write_files {
-                        println!("    - {}", path);
+                    for file in &inherited_stage.read_write_files {
+                        println!("    - {}", file.path);
                     }
                 }
-                if !read_only_files.is_empty() {
+                if !inherited_stage.read_only_files.is_empty() {
                     println!("  Read-Only:");
-                    for (path, _) in &read_only_files {
+                    for file in &inherited_stage.read_only_files {
+                        println!("    - {}", file.path);
+                    }
+                }
+                if inherited_stage.read_write_files.is_empty()
+                    && inherited_stage.read_only_files.is_empty()
+                {
+                    println!("  (empty)");
+                }
+                println!("Prepared:");
+                if !prepared_stage.read_write_files.is_empty() {
+                    println!("  Read-Write:");
+                    for path in &prepared_stage.read_write_files {
                         println!("    - {}", path);
                     }
                 }
-                if read_write_files.is_empty() && read_only_files.is_empty() {
+                if !prepared_stage.read_only_files.is_empty() {
+                    println!("  Read-Only:");
+                    for path in &prepared_stage.read_only_files {
+                        println!("    - {}", path);
+                    }
+                }
+                if prepared_stage.read_write_files.is_empty()
+                    && prepared_stage.read_only_files.is_empty()
+                {
                     println!("  (empty)");
                 }
                 println!("---");
 
-                // 3. Get conversation history to build prompt
+                let metadata_json = serde_json::to_string(&metadata)?;
+
+                // Add user message with metadata
+                let user_message_id =
+                    db::add_message(&conn, parent_id, "user", &prompt, Some(&metadata_json))?;
+                println!("Added user message with ID: {}", user_message_id);
+
+                // 6. Get conversation history to build prompt
                 let history = db::get_conversation_history(&conn, user_message_id)?;
 
                 let (cur_messages, done_messages) = if let Some(last) = history.last() {
@@ -267,8 +408,8 @@ pub async fn run() -> anyhow::Result<()> {
                 let llm_messages_for_prompt = prompt::build_prompt_messages(
                     done_messages,
                     cur_messages,
-                    &read_write_files,
-                    &read_only_files,
+                    &read_write_files_prompt,
+                    &read_only_files_prompt,
                 )?;
 
                 // Convert to LLM ChatMessage format
@@ -311,12 +452,14 @@ pub async fn run() -> anyhow::Result<()> {
 
                 hook_manager.run_post_send_hooks(&assistant_response)?;
 
+                db::clear_context_stage(&conn, "default")?;
+
                 let assistant_message_id = db::add_message(
                     &conn,
                     Some(user_message_id),
                     "assistant",
                     &assistant_response,
-                    Some(PROMPT_METADATA),
+                    None, // Assistant messages don't need metadata
                 )?;
                 println!("Added assistant message with ID: {}", assistant_message_id);
 
