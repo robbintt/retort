@@ -3,11 +3,7 @@ pub mod postprocessor;
 use std::path::PathBuf;
 
 pub trait Hook {
-    fn post_send(
-        &self,
-        llm_response: &str,
-        project_root: &Option<PathBuf>,
-    ) -> anyhow::Result<()>;
+    fn post_send(&self, llm_response: &str, project_root: &Option<PathBuf>) -> anyhow::Result<()>;
 }
 
 pub struct HookManager {

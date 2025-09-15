@@ -175,11 +175,7 @@ impl PostprocessorHook {
 }
 
 impl Hook for PostprocessorHook {
-    fn post_send(
-        &self,
-        llm_response: &str,
-        project_root: &Option<PathBuf>,
-    ) -> anyhow::Result<()> {
+    fn post_send(&self, llm_response: &str, project_root: &Option<PathBuf>) -> anyhow::Result<()> {
         let (commit_message, changes) = self.parse_changes(llm_response)?;
         if !changes.is_empty() {
             self.apply_and_commit_changes(&commit_message, &changes, project_root)?;

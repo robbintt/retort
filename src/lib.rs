@@ -106,8 +106,7 @@ pub async fn run() -> anyhow::Result<()> {
                     let mut inherited_stage: MessageMetadata = Default::default();
                     if let Some(tag) = db::get_active_chat_tag(&conn)? {
                         if let Some(parent_id) = db::get_message_id_by_tag(&conn, &tag)? {
-                            if let Some(metadata_json) =
-                                db::get_message_metadata(&conn, parent_id)?
+                            if let Some(metadata_json) = db::get_message_metadata(&conn, parent_id)?
                             {
                                 inherited_stage = serde_json::from_str(&metadata_json)?;
                             }
@@ -196,10 +195,7 @@ pub async fn run() -> anyhow::Result<()> {
                             anyhow::anyhow!("Failed to convert project root path to string.")
                         })?,
                     )?;
-                    println!(
-                        "Set project root to: {}",
-                        canonical_path.to_string_lossy()
-                    );
+                    println!("Set project root to: {}", canonical_path.to_string_lossy());
                     modified = true;
                 }
 
