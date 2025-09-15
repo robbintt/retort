@@ -727,5 +727,5 @@ fn test_project_root_enforcement() -> Result<()> {
         r#"feat: write inside
 
 {}
-<<<<<<< MODIFIED_SEARCH
+<<<<<<< SEARCH
 original content
