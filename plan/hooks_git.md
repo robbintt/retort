@@ -41,3 +41,21 @@ This document outlines the step-by-step plan to implement a post-processor hook 
 - [x] Register an instance of `PostprocessorHook` with the `HookManager`.
 - [x] In the `Command::Send` match arm, after the complete `assistant_response` string is received, call `hook_manager.run_post_send_hooks(&assistant_response)`.
 - [x] This call should happen before the assistant's message is saved to the database to ensure a clean separation of concerns.
+
+## Phase 6: Test the Post-Processor Hook
+
+- [x] **Modify `src/llm.rs`:**
+    - [x] Update the `get_response` and `get_response_stream` functions to support customizable mock responses for testing.
+    - [x] If a `MOCK_LLM_CONTENT` environment variable is set, its value should be used as the mock LLM response. This will take precedence over the existing `MOCK_LLM` flag, which can remain for simpler tests.
+
+- [x] **Add a new integration test in `tests/cli.rs`:**
+    - [x] Create a new test function, for example, `test_send_with_postprocessor_hook`.
+    - [x] In the test, set up a temporary directory and initialize a Git repository within it.
+    - [x] Create and commit an initial version of a file (e.g., `test-file.txt`).
+    - [x] Define a mock LLM response string containing a commit message and a `diff` block that modifies the test file.
+    - [x] Run the `retort send` command, using the `MOCK_LLM_CONTENT` environment variable to inject the mock response.
+
+- [x] **Add Assertions to the new test:**
+    - [x] Verify that the content of `test-file.txt` on disk has been updated according to the diff.
+    - [x] Use `git` commands within the test to confirm that a new commit has been created.
+    - [x] Verify that the commit message of the new commit matches the message from the mock LLM response.

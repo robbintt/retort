@@ -8,6 +8,9 @@ use futures::stream::{Stream, StreamExt};
 pub async fn get_response_stream(
     messages: &[ChatMessage],
 ) -> Result<std::pin::Pin<Box<dyn Stream<Item = Result<String>> + Send>>> {
+    if let Ok(mock_content) = std::env::var("MOCK_LLM_CONTENT") {
+        return Ok(Box::pin(futures::stream::once(async { Ok(mock_content) })));
+    }
     if std::env::var("MOCK_LLM").is_ok() {
         let response_string = "This is a mocked response.".to_string();
         return Ok(Box::pin(futures::stream::once(async {
@@ -39,6 +42,10 @@ pub async fn get_response_stream(
 pub async fn get_response(messages: &[ChatMessage]) -> Result<String> {
     // In a test environment, if MOCK_LLM is set, we return a mock response
     // without making a network call.
+    if let Ok(mock_content) = std::env::var("MOCK_LLM_CONTENT") {
+        println!("{}", mock_content);
+        return Ok(mock_content);
+    }
     if std::env::var("MOCK_LLM").is_ok() {
         let response_string = "This is a mocked response.".to_string();
         // The real function prints the response, so we do too for consistency.
