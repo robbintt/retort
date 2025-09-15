@@ -726,6 +726,3 @@ fn test_project_root_enforcement() -> Result<()> {
     let mock_response_inside = format!(
         r#"feat: write inside
 
-{}
-<<<<<<< MODIFIED_SEARCH
-original content
