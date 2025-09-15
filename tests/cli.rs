@@ -438,11 +438,11 @@ fn test_send_with_postprocessor_hook() -> Result<()> {
 This is a commit message.
 
 test-file.txt
-<<<<<<< S_E_A_R_C_H
+<<<<<<< SEARCH
 hello world
-======= D_I_V_I_D_E_R
+=======
 hello rust
->>>>>>> R_E_P_L_A_C_E
+>>>>>>> REPLACE
 "#;
 
     // Run retort send. It should trigger the postprocessor hook.
