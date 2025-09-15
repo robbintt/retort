@@ -252,10 +252,25 @@ pub fn get_context_stage(conn: &Connection, name: &str) -> Result<ContextStage> 
         |row| {
             let read_write_files_json: String = row.get(0)?;
             let read_only_files_json: String = row.get(1)?;
+            let read_write_files =
+                serde_json::from_str(&read_write_files_json).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        0,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })?;
+            let read_only_files = serde_json::from_str(&read_only_files_json).map_err(|e| {
+                rusqlite::Error::FromSqlConversionFailure(
+                    1,
+                    rusqlite::types::Type::Text,
+                    Box::new(e),
+                )
+            })?;
             Ok(ContextStage {
                 name: name.to_string(),
-                read_write_files: serde_json::from_str(&read_write_files_json)?,
-                read_only_files: serde_json::from_str(&read_only_files_json)?,
+                read_write_files,
+                read_only_files,
             })
         },
     )

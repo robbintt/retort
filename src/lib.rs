@@ -189,6 +189,7 @@ pub async fn run() -> anyhow::Result<()> {
                 new,
                 stream,
                 no_stream,
+                ignore_inherited_stage,
             } => {
                 let mut parent_id: Option<i64> = None;
                 let mut chat_tag_for_update: Option<String> = None;
