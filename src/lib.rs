@@ -90,13 +90,13 @@ pub async fn run() -> anyhow::Result<()> {
                     println!("Prepared Context (for next message):");
                     if !stage.read_write_files.is_empty() {
                         println!("  Read-Write:");
-                        for file in stage.read_write_files {
+                        for file in &stage.read_write_files {
                             println!("    - {}", file);
                         }
                     }
                     if !stage.read_only_files.is_empty() {
                         println!("  Read-Only:");
-                        for file in stage.read_only_files {
+                        for file in &stage.read_only_files {
                             println!("    - {}", file);
                         }
                     }
@@ -189,7 +189,7 @@ pub async fn run() -> anyhow::Result<()> {
                 new,
                 stream,
                 no_stream,
-                ignore_inherited_stage,
+                ignore_inherited_stage: _,
             } => {
                 let mut parent_id: Option<i64> = None;
                 let mut chat_tag_for_update: Option<String> = None;
