@@ -1,5 +1,6 @@
 use anyhow::Result;
 use rusqlite::Connection;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
@@ -48,6 +49,14 @@ pub fn setup(db_path_str: &str) -> Result<Connection> {
         );
 
         INSERT OR IGNORE INTO profiles (name) VALUES ('default');
+
+        CREATE TABLE IF NOT EXISTS context_stages (
+            name TEXT PRIMARY KEY NOT NULL,
+            read_write_files TEXT NOT NULL,
+            read_only_files TEXT NOT NULL
+        );
+
+        INSERT OR IGNORE INTO context_stages (name, read_write_files, read_only_files) VALUES ('default', '[]', '[]');
         ",
     )?;
 
@@ -227,4 +236,67 @@ pub fn get_profile_by_name(conn: &Connection, name: &str) -> Result<Profile> {
         },
     )
     .map_err(Into::into)
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
+pub struct ContextStage {
+    pub name: String,
+    pub read_write_files: Vec<String>,
+    pub read_only_files: Vec<String>,
+}
+
+pub fn get_context_stage(conn: &Connection, name: &str) -> Result<ContextStage> {
+    conn.query_row(
+        "SELECT read_write_files, read_only_files FROM context_stages WHERE name = ?1",
+        [name],
+        |row| {
+            let read_write_files_json: String = row.get(0)?;
+            let read_only_files_json: String = row.get(1)?;
+            Ok(ContextStage {
+                name: name.to_string(),
+                read_write_files: serde_json::from_str(&read_write_files_json)?,
+                read_only_files: serde_json::from_str(&read_only_files_json)?,
+            })
+        },
+    )
+    .map_err(Into::into)
+}
+
+pub fn update_context_stage(conn: &Connection, stage: &ContextStage) -> Result<()> {
+    let read_write_files_json = serde_json::to_string(&stage.read_write_files)?;
+    let read_only_files_json = serde_json::to_string(&stage.read_only_files)?;
+    conn.execute(
+        "UPDATE context_stages SET read_write_files = ?1, read_only_files = ?2 WHERE name = ?3",
+        (read_write_files_json, read_only_files_json, &stage.name),
+    )?;
+    Ok(())
+}
+
+pub fn add_file_to_stage(
+    conn: &Connection,
+    name: &str,
+    file_path: &str,
+    read_only: bool,
+) -> Result<()> {
+    let mut stage = get_context_stage(conn, name)?;
+    let file_list = if read_only {
+        &mut stage.read_only_files
+    } else {
+        &mut stage.read_write_files
+    };
+
+    if !file_list.contains(&file_path.to_string()) {
+        file_list.push(file_path.to_string());
+    }
+
+    update_context_stage(conn, &stage)
+}
+
+pub fn remove_file_from_stage(conn: &Connection, name: &str, file_path: &str) -> Result<()> {
+    let mut stage = get_context_stage(conn, name)?;
+
+    stage.read_write_files.retain(|f| f != file_path);
+    stage.read_only_files.retain(|f| f != file_path);
+
+    update_context_stage(conn, &stage)
 }

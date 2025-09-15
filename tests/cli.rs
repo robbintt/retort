@@ -474,3 +474,75 @@ hello rust
 
     Ok(())
 }
+
+#[test]
+fn test_stage_command() -> Result<()> {
+    let temp_dir = tempdir()?;
+    let home_dir = temp_dir.path();
+    let db_path = home_dir.join("test.db");
+
+    let config_dir = home_dir.join(".retort");
+    fs::create_dir_all(&config_dir)?;
+    let config_path = config_dir.join("config.yaml");
+    fs::write(
+        config_path,
+        format!("database_path: {}", db_path.to_str().unwrap()),
+    )?;
+
+    // The setup is implicitly called by the command. We just need an empty DB
+    // to ensure the context_stages table is created.
+    let _conn = retort::db::setup(db_path.to_str().unwrap())?;
+
+    // 1. `retort stage` should be empty initially.
+    let expected_empty = "Prepared Context (for next message):\n  (empty)\n";
+    Command::cargo_bin("retort")?
+        .arg("stage")
+        .env("HOME", home_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::diff(expected_empty));
+
+    // 2. Stage a read-write file.
+    Command::cargo_bin("retort")?
+        .args(["stage", "file1.txt"])
+        .env("HOME", home_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Staged file1.txt as read-write."));
+
+    // 3. Stage a read-only file.
+    Command::cargo_bin("retort")?
+        .args(["stage", "file2.txt", "-r"])
+        .env("HOME", home_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Staged file2.txt as read-only."));
+
+    // 4. `retort stage` should list both files.
+    let expected_list = "Prepared Context (for next message):\n  Read-Write:\n    - file1.txt\n  Read-Only:\n    - file2.txt\n";
+    Command::cargo_bin("retort")?
+        .arg("stage")
+        .env("HOME", home_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::diff(expected_list));
+
+    // 5. Drop a file.
+    Command::cargo_bin("retort")?
+        .args(["stage", "file1.txt", "-d"])
+        .env("HOME", home_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Removed file1.txt from stage."));
+
+    // 6. `retort stage` should show only the remaining file.
+    let expected_final = "Prepared Context (for next message):\n  Read-Only:\n    - file2.txt\n";
+    Command::cargo_bin("retort")?
+        .arg("stage")
+        .env("HOME", home_dir)
+        .assert()
+        .success()
+        .stdout(predicate::str::diff(expected_final));
+
+    Ok(())
+}

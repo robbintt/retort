@@ -70,6 +70,41 @@ pub async fn run() -> anyhow::Result<()> {
                     }
                 }
             },
+            Command::Stage(args) => {
+                if let Some(file_path) = args.file_path {
+                    if args.drop {
+                        db::remove_file_from_stage(&conn, "default", &file_path)?;
+                        println!("Removed {} from stage.", file_path);
+                    } else {
+                        db::add_file_to_stage(&conn, "default", &file_path, args.read_only)?;
+                        let file_type = if args.read_only {
+                            "read-only"
+                        } else {
+                            "read-write"
+                        };
+                        println!("Staged {} as {}.", file_path, file_type);
+                    }
+                } else {
+                    // For now, just show prepared context. Inheritance is in a later phase.
+                    let stage = db::get_context_stage(&conn, "default")?;
+                    println!("Prepared Context (for next message):");
+                    if !stage.read_write_files.is_empty() {
+                        println!("  Read-Write:");
+                        for file in stage.read_write_files {
+                            println!("    - {}", file);
+                        }
+                    }
+                    if !stage.read_only_files.is_empty() {
+                        println!("  Read-Only:");
+                        for file in stage.read_only_files {
+                            println!("    - {}", file);
+                        }
+                    }
+                    if stage.read_write_files.is_empty() && stage.read_only_files.is_empty() {
+                        println!("  (empty)");
+                    }
+                }
+            }
             Command::List => {
                 let leaves = db::get_leaf_messages(&conn)?;
                 println!("{:<5} {:<20} Last User Message", "ID", "Tag");

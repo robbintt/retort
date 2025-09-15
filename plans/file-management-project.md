@@ -8,7 +8,7 @@ The core of this system is a persistent "context stage," which holds lists of fi
 
 This phase focuses on setting up the database schema and data structures for managing a persistent "context stage". This stage will hold file paths that are to be included in prompts.
 
-- [ ] **Task 1.1: Update Database Schema.** In `src/db.rs`, modify the `setup` function to create a new `context_stages` table and populate it with a 'default' entry.
+- [x] **Task 1.1: Update Database Schema.** In `src/db.rs`, modify the `setup` function to create a new `context_stages` table and populate it with a 'default' entry.
 
   Specifically, add the following SQL to the `conn.execute_batch` call in `src/db.rs`:
   ```sql
@@ -21,7 +21,7 @@ This phase focuses on setting up the database schema and data structures for man
         INSERT OR IGNORE INTO context_stages (name, read_write_files, read_only_files) VALUES ('default', '[]', '[]');
   ```
 
-- [ ] **Task 1.2: Define ContextStage Struct.** In `src/db.rs`, define a `ContextStage` struct to represent a row in the new table. It needs `serde` support for serializing the file lists into JSON.
+- [x] **Task 1.2: Define ContextStage Struct.** In `src/db.rs`, define a `ContextStage` struct to represent a row in the new table. It needs `serde` support for serializing the file lists into JSON.
 
   Add this struct definition to `src/db.rs` and the required `use` statements at the top of the file. You will need to add `serde` and `serde_json` to `Cargo.toml` in a later step.
   ```rust
@@ -35,14 +35,14 @@ This phase focuses on setting up the database schema and data structures for man
   }
   ```
 
-- [ ] **Task 1.3: Implement Context Stage DB Functions.** In `src/db.rs`, add functions to get, update, and modify the 'default' context stage. These functions will handle reading the JSON, modifying the file lists, and writing back to the database.
+- [x] **Task 1.3: Implement Context Stage DB Functions.** In `src/db.rs`, add functions to get, update, and modify the 'default' context stage. These functions will handle reading the JSON, modifying the file lists, and writing back to the database.
 
   - `get_context_stage(conn: &Connection, name: &str) -> Result<ContextStage>`: Fetches the stage by name and deserializes the file lists.
   - `update_context_stage(conn: &Connection, stage: &ContextStage) -> Result<()>`: Serializes the file lists and writes the entire stage object back to the database.
   - `add_file_to_stage(conn: &Connection, name: &str, file_path: &str, read_only: bool) -> Result<()>`: A helper that gets the stage, adds a file path to the correct list (avoiding duplicates), and calls `update_context_stage`.
   - `remove_file_from_stage(conn: &Connection, name: &str, file_path: &str) -> Result<()>`: A helper that gets the stage, removes a file path from both lists, and calls `update_context_stage`.
 
-- [ ] **Task 1.4: Add Database Unit Tests.** Add a new test file `tests/integration/context.rs` (and `mod context;` in `tests/integration/mod.rs`) to test the new database functions.
+- [x] **Task 1.4: Add Database Unit Tests.** Add a new test file `tests/integration/context.rs` (and `mod context;` in `tests/integration/mod.rs`) to test the new database functions.
 
   The tests should cover:
     1. Setting up an in-memory database.
@@ -78,7 +78,7 @@ This phase introduces the `retort stage` command and updates the `send` command 
 
 - [x] **Task 2.2: Update `Send` Command.** In `src/cli.rs`, add an `--ignore-inherited-stage` (`-i`) flag to the `Send` command arguments. This will be used in a later phase to allow starting a chat with a clean context. (Note: This flag was already present).
 
-- [ ] **Task 2.3: Implement `stage` Command Logic.** In `src/lib.rs`, implement the logic for the `Stage` subcommand in the main `run` function.
+- [x] **Task 2.3: Implement `stage` Command Logic.** In `src/lib.rs`, implement the logic for the `Stage` subcommand in the main `run` function.
 
   The logic will differentiate based on whether `file_path` is provided:
   ```rust
@@ -98,7 +98,7 @@ This phase introduces the `retort stage` command and updates the `send` command 
   }
   ```
 
-- [ ] **Task 2.4: Add CLI Integration Tests.** In `tests/cli.rs`, add new tests for `retort stage`.
+- [x] **Task 2.4: Add CLI Integration Tests.** In `tests/cli.rs`, add new tests for `retort stage`.
     - Test adding and dropping files, verifying the `context_stages` table is updated.
     - Test `retort stage` (with no arguments) and verify that the output correctly displays both inherited (mocked) and prepared contexts.
 
