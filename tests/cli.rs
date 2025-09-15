@@ -179,13 +179,6 @@ fn test_send_command() -> Result<()> {
         format!("database_path: {}", db_path.to_str().unwrap()),
     )?;
 
-    // Copy prompts directory for the test so that the templates can be found
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    copy_dir_all(
-        std::path::Path::new(manifest_dir).join("prompts"),
-        temp_dir.path().join("prompts"),
-    )?;
-
     // Setup: create a chat and tag it
     let initial_leaf_id;
     {
@@ -435,13 +428,6 @@ fn test_context_inheritance() -> Result<()> {
     )?;
     let _conn = retort::db::setup(db_path.to_str().unwrap())?;
 
-    // Copy prompts directory for the test so that the templates can be found
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    copy_dir_all(
-        std::path::Path::new(manifest_dir).join("prompts"),
-        temp_dir.path().join("prompts"),
-    )?;
-
     // Create some dummy files to stage
     fs::write(temp_dir.path().join("file1.txt"), "content1")?;
     fs::write(temp_dir.path().join("file2.txt"), "content2")?;
@@ -463,7 +449,7 @@ fn test_context_inheritance() -> Result<()> {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "Inherited:\n  (empty)\nPrepared:\n  Read-Write:\n    - file1.txt",
+            "CONTEXT (for this message):\n  Read-Write:\n    - file1.txt",
         ));
 
     // After send, prepared stage should be empty.
@@ -492,7 +478,7 @@ fn test_context_inheritance() -> Result<()> {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "Inherited:\n  Read-Write:\n    - file1.txt\nPrepared:\n  Read-Write:\n    - file2.txt",
+            "CONTEXT (for this message):\n  Read-Write:\n    - file1.txt\n    - file2.txt",
         ));
 
     // 3. Stage file3, send msg3 but with --ignore-inherited-stage. Context should only have file3.
@@ -517,7 +503,7 @@ fn test_context_inheritance() -> Result<()> {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "Inherited:\n  (empty)\nPrepared:\n  Read-Write:\n    - file3.txt",
+            "CONTEXT (for this message):\n  Read-Write:\n    - file3.txt",
         ));
 
     Ok(())
