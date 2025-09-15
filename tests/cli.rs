@@ -2,7 +2,6 @@ use anyhow::Result;
 use assert_cmd::prelude::*;
 use predicates::prelude::*;
 use std::fs;
-use std::path::Path;
 use std::process::Command;
 use tempfile::tempdir;
 
@@ -437,6 +436,13 @@ fn test_context_inheritance() -> Result<()> {
         .stdout(predicate::str::contains(
             "CONTEXT (for this message):\n  Read-Write:\n    - file1.txt",
         ));
+
+    // Set the active chat so `retort stage` can find the inherited context
+    Command::cargo_bin("retort")?
+        .args(["profile", "--active-chat", "inherit-test"])
+        .env("HOME", &home_dir)
+        .assert()
+        .success();
 
     // After send, prepared stage should be empty, and file1 should be inherited.
     let expected_stage1 = "Final Context (for next message):\n  Read-Write:\n    - file1.txt\n\nInherited Context (from active chat):\n  Read-Write:\n    - file1.txt\n\nPrepared Context (delta for next message):\n  (empty)\n";
