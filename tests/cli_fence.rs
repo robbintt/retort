@@ -137,6 +137,13 @@ fn test_project_root_enforcement() -> Result<()> {
     fs::create_dir_all(&home_dir)?;
     let db_path = home_dir.join("test.db");
 
+    // Copy prompts directory for the test so that the templates can be found
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    copy_dir_all(
+        std::path::Path::new(manifest_dir).join("prompts"),
+        project_dir.join("prompts"),
+    )?;
+
     // Setup config and db
     let config_dir = home_dir.join(".retort");
     fs::create_dir_all(&config_dir)?;
