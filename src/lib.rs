@@ -1,6 +1,7 @@
 use ::llm::chat::ChatMessage;
 use clap::Parser;
 use futures::StreamExt;
+use std::fs;
 use std::io::{stdout, Write};
 
 pub mod cli;
@@ -218,7 +219,43 @@ pub async fn run() -> anyhow::Result<()> {
                     db::add_message(&conn, parent_id, "user", &prompt, Some(PROMPT_METADATA))?;
                 println!("Added user message with ID: {}", user_message_id);
 
-                // Get conversation history to build prompt
+                // --- Prompt Assembly ---
+                // 1. Load file context
+                let prepared_stage = db::get_context_stage(&conn, "default")?;
+                let mut read_write_files = Vec::new();
+                for path in &prepared_stage.read_write_files {
+                    let content = fs::read_to_string(path)?;
+                    read_write_files.push((path.clone(), content));
+                }
+
+                let mut read_only_files = Vec::new();
+                for path in &prepared_stage.read_only_files {
+                    let content = fs::read_to_string(path)?;
+                    read_only_files.push((path.clone(), content));
+                }
+
+                // 2. Print context view for user
+                println!("---");
+                println!("CONTEXT (for this message):");
+                println!("Prepared:");
+                if !read_write_files.is_empty() {
+                    println!("  Read-Write:");
+                    for (path, _) in &read_write_files {
+                        println!("    - {}", path);
+                    }
+                }
+                if !read_only_files.is_empty() {
+                    println!("  Read-Only:");
+                    for (path, _) in &read_only_files {
+                        println!("    - {}", path);
+                    }
+                }
+                if read_write_files.is_empty() && read_only_files.is_empty() {
+                    println!("  (empty)");
+                }
+                println!("---");
+
+                // 3. Get conversation history to build prompt
                 let history = db::get_conversation_history(&conn, user_message_id)?;
 
                 let (cur_messages, done_messages) = if let Some(last) = history.last() {
@@ -227,8 +264,12 @@ pub async fn run() -> anyhow::Result<()> {
                     (Vec::new(), Vec::new())
                 };
 
-                let llm_messages_for_prompt =
-                    prompt::build_prompt_messages(done_messages, cur_messages)?;
+                let llm_messages_for_prompt = prompt::build_prompt_messages(
+                    done_messages,
+                    cur_messages,
+                    &read_write_files,
+                    &read_only_files,
+                )?;
 
                 // Convert to LLM ChatMessage format
                 let llm_messages: Vec<ChatMessage> = llm_messages_for_prompt

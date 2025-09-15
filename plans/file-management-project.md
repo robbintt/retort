@@ -106,7 +106,7 @@ This phase introduces the `retort stage` command and updates the `send` command 
 
 This phase connects the file context stage to the prompt generation process.
 
-- [ ] **Task 3.1: Load Files in `send` Command.** In `src/lib.rs` (in `Command::Send`), assemble the file context before building the prompt:
+- [x] **Task 3.1: Load Files in `send` Command.** In `src/lib.rs` (in `Command::Send`), assemble the file context before building the prompt:
     1.  **Inherited Context**: If `ignore_inherited_stage` flag is `false`, find the parent message, deserialize its metadata (from Task 4.1), and load the files listed there.
     2.  **Prepared Context**: Fetch the 'default' context stage from the database and load its files.
     3.  **Merge Contexts**: Combine both contexts. The prepared context's changes (additions/removals) take precedence.
@@ -114,7 +114,7 @@ This phase connects the file context stage to the prompt generation process.
     5.  Pass the file contents to `prompt::build_prompt_messages`.
     6.  Print a view of the final context (split by Inherited/Prepared) for the user.
 
-- [ ] **Task 3.2: Update `build_prompt_messages`.** In `src/prompt.rs`, update the signature of `build_prompt_messages` to accept the file content vectors.
+- [x] **Task 3.2: Update `build_prompt_messages`.** In `src/prompt.rs`, update the signature of `build_prompt_messages` to accept the file content vectors.
   ```rust
   pub fn build_prompt_messages(
       done_messages: Vec<HistoryMessage>,
@@ -124,7 +124,7 @@ This phase connects the file context stage to the prompt generation process.
   ) -> Result<Vec<Message>>
   ```
 
-- [ ] **Task 3.3: Inject File Context into Prompt.** In `src/prompt.rs`, inside `build_prompt_messages`, programmatically construct and insert user/assistant message pairs for the files. This mimics the conversational file-providing pattern shown in `prompts/diff_fenced.j2`.
+- [x] **Task 3.3: Inject File Context into Prompt.** In `src/prompt.rs`, inside `build_prompt_messages`, programmatically construct and insert user/assistant message pairs for the files. This mimics the conversational file-providing pattern shown in `prompts/diff_fenced.j2`.
     - If `read_only_files` is not empty, create a `user` message with the content from `READ_ONLY_FILES_PREFIX`, followed by each file's path and content in a fenced block. Then, add an `assistant` message with the fixed response "Ok, I will use these files as references.".
     - Do the same for `read_write_files` using `CHAT_FILES_PREFIX` and the response "Ok, any changes I propose will be to those files.".
     - Insert these new `Message` objects into `result_messages` after the system prompt but before the main conversation history (`done_messages`).

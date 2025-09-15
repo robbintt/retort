@@ -28,6 +28,8 @@ pub struct Message {
 pub fn build_prompt_messages(
     done_messages: Vec<HistoryMessage>,
     cur_messages: Vec<HistoryMessage>,
+    read_write_files: &[(String, String)],
+    read_only_files: &[(String, String)],
 ) -> Result<Vec<Message>> {
     #[derive(Serialize)]
     struct SystemPromptContext {
@@ -73,6 +75,36 @@ pub fn build_prompt_messages(
         content: system_prompt_content,
     });
 
+    if !read_only_files.is_empty() {
+        let mut content = format!("{}\n", READ_ONLY_FILES_PREFIX);
+        for (path, file_content) in read_only_files {
+            content.push_str(&format!("{}\n```\n{}\n```\n", path, file_content));
+        }
+        result_messages.push(Message {
+            role: "user".to_string(),
+            content,
+        });
+        result_messages.push(Message {
+            role: "assistant".to_string(),
+            content: "Ok, I will use these files as references.".to_string(),
+        });
+    }
+
+    if !read_write_files.is_empty() {
+        let mut content = format!("{}\n", CHAT_FILES_PREFIX);
+        for (path, file_content) in read_write_files {
+            content.push_str(&format!("{}\n```\n{}\n```\n", path, file_content));
+        }
+        result_messages.push(Message {
+            role: "user".to_string(),
+            content,
+        });
+        result_messages.push(Message {
+            role: "assistant".to_string(),
+            content: "Ok, any changes I propose will be to those files.".to_string(),
+        });
+    }
+
     result_messages.extend(done_messages.into_iter().map(|m| Message {
         role: m.role,
         content: m.content,
@@ -110,7 +142,7 @@ mod tests {
             created_at: "".to_string(),
         }];
 
-        let messages = build_prompt_messages(done_messages, cur_messages).unwrap();
+        let messages = build_prompt_messages(done_messages, cur_messages, &[], &[]).unwrap();
 
         assert!(!messages.is_empty());
 
@@ -129,5 +161,60 @@ mod tests {
         // Check for current message
         assert_eq!(messages[3].role, "user");
         assert_eq!(messages[3].content, "current user message");
+    }
+
+    #[test]
+    fn test_build_prompt_messages_with_files() {
+        let done_messages = vec![HistoryMessage {
+            role: "user".to_string(),
+            content: "previous user message".to_string(),
+            created_at: "".to_string(),
+        }];
+        let cur_messages = vec![HistoryMessage {
+            role: "user".to_string(),
+            content: "current user message".to_string(),
+            created_at: "".to_string(),
+        }];
+        let read_write_files = vec![("rw.txt".to_string(), "rw content".to_string())];
+        let read_only_files = vec![("ro.txt".to_string(), "ro content".to_string())];
+
+        let messages =
+            build_prompt_messages(done_messages, cur_messages, &read_write_files, &read_only_files)
+                .unwrap();
+
+        assert_eq!(messages.len(), 7);
+
+        // 1. System prompt
+        assert_eq!(messages[0].role, "system");
+
+        // 2. Read-only files
+        assert_eq!(messages[1].role, "user");
+        assert!(messages[1].content.contains(READ_ONLY_FILES_PREFIX));
+        assert!(messages[1].content.contains("ro.txt"));
+        assert!(messages[1].content.contains("ro content"));
+        assert_eq!(messages[2].role, "assistant");
+        assert_eq!(
+            messages[2].content,
+            "Ok, I will use these files as references."
+        );
+
+        // 3. Read-write files
+        assert_eq!(messages[3].role, "user");
+        assert!(messages[3].content.contains(CHAT_FILES_PREFIX));
+        assert!(messages[3].content.contains("rw.txt"));
+        assert!(messages[3].content.contains("rw content"));
+        assert_eq!(messages[4].role, "assistant");
+        assert_eq!(
+            messages[4].content,
+            "Ok, any changes I propose will be to those files."
+        );
+
+        // 4. History (done_messages)
+        assert_eq!(messages[5].role, "user");
+        assert_eq!(messages[5].content, "previous user message");
+
+        // 5. Current message (cur_messages)
+        assert_eq!(messages[6].role, "user");
+        assert_eq!(messages[6].content, "current user message");
     }
 }
