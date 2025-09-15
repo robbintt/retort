@@ -412,18 +412,26 @@ pub async fn run() -> anyhow::Result<()> {
                     (Vec::new(), Vec::new())
                 };
 
-                let llm_messages_for_prompt = prompt::build_prompt_messages(
+                let mut llm_messages_for_prompt = prompt::build_prompt_messages(
                     done_messages,
                     cur_messages,
                     &read_write_files_prompt,
                     &read_only_files_prompt,
                 )?;
 
+                let system_prompt = if !llm_messages_for_prompt.is_empty()
+                    && llm_messages_for_prompt[0].role == "system"
+                {
+                    Some(llm_messages_for_prompt.remove(0).content)
+                } else {
+                    None
+                };
+
                 // Convert to LLM ChatMessage format
                 let llm_messages: Vec<ChatMessage> = llm_messages_for_prompt
                     .iter()
                     .map(|msg| {
-                        if msg.role == "user" || msg.role == "system" {
+                        if msg.role == "user" {
                             ChatMessage::user().content(msg.content.clone()).build()
                         } else {
                             ChatMessage::assistant()
@@ -443,7 +451,7 @@ pub async fn run() -> anyhow::Result<()> {
                 };
 
                 let assistant_response = if use_stream {
-                    let mut stream = llm::get_response_stream(&llm_messages).await?;
+                    let mut stream = llm::get_response_stream(&llm_messages, system_prompt).await?;
                     let mut full_response = String::new();
                     while let Some(result) = stream.next().await {
                         let text_chunk = result?;
@@ -454,7 +462,7 @@ pub async fn run() -> anyhow::Result<()> {
                     println!(); // For a newline after the streaming is done
                     full_response
                 } else {
-                    llm::get_response(&llm_messages).await?
+                    llm::get_response(&llm_messages, system_prompt).await?
                 };
 
                 hook_manager.run_post_send_hooks(&assistant_response, &project_root)?;

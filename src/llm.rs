@@ -7,6 +7,7 @@ use futures::stream::{Stream, StreamExt};
 
 pub async fn get_response_stream(
     messages: &[ChatMessage],
+    system_prompt: Option<String>,
 ) -> Result<std::pin::Pin<Box<dyn Stream<Item = Result<String>> + Send>>> {
     if let Ok(mock_content) = std::env::var("MOCK_LLM_CONTENT") {
         return Ok(Box::pin(futures::stream::once(async { Ok(mock_content) })));
@@ -22,13 +23,18 @@ pub async fn get_response_stream(
     let api_key =
         std::env::var("GOOGLE_API_KEY").map_err(|_| anyhow::anyhow!("GOOGLE_API_KEY not set."))?;
 
-    let llm = LLMBuilder::new()
+    let mut builder = LLMBuilder::new()
         .backend(LLMBackend::Google)
         .api_key(api_key)
         .model("gemini-2.5-flash")
         .max_tokens(8512)
-        .temperature(0.7)
-        .system("You are a helpful AI assistant specialized in programming.")
+        .temperature(0.7);
+
+    if let Some(system) = system_prompt {
+        builder = builder.system(system);
+    }
+
+    let llm = builder
         .build()
         .map_err(|e| anyhow::anyhow!("Failed to build LLM (Google): {}", e))?;
 
@@ -39,7 +45,7 @@ pub async fn get_response_stream(
     ))
 }
 
-pub async fn get_response(messages: &[ChatMessage]) -> Result<String> {
+pub async fn get_response(messages: &[ChatMessage], system_prompt: Option<String>) -> Result<String> {
     // In a test environment, if MOCK_LLM is set, we return a mock response
     // without making a network call.
     if let Ok(mock_content) = std::env::var("MOCK_LLM_CONTENT") {
@@ -57,13 +63,18 @@ pub async fn get_response(messages: &[ChatMessage]) -> Result<String> {
     let api_key =
         std::env::var("GOOGLE_API_KEY").map_err(|_| anyhow::anyhow!("GOOGLE_API_KEY not set."))?;
 
-    let llm = LLMBuilder::new()
+    let mut builder = LLMBuilder::new()
         .backend(LLMBackend::Google)
         .api_key(api_key)
         .model("gemini-2.5-flash")
         .max_tokens(8512)
-        .temperature(0.7)
-        .system("You are a helpful AI assistant specialized in programming.")
+        .temperature(0.7);
+
+    if let Some(system) = system_prompt {
+        builder = builder.system(system);
+    }
+
+    let llm = builder
         .build()
         .map_err(|e| anyhow::anyhow!("Failed to build LLM (Google): {}", e))?;
 
