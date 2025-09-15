@@ -14,12 +14,11 @@ This phase focuses on setting up the database schema and data structures for man
   ```sql
         CREATE TABLE IF NOT EXISTS context_stages (
             name TEXT PRIMARY KEY NOT NULL,
-            project_root TEXT,
             read_write_files TEXT NOT NULL,
             read_only_files TEXT NOT NULL
         );
 
-        INSERT OR IGNORE INTO context_stages (name, project_root, read_write_files, read_only_files) VALUES ('default', NULL, '[]', '[]');
+        INSERT OR IGNORE INTO context_stages (name, read_write_files, read_only_files) VALUES ('default', '[]', '[]');
   ```
 
 - [ ] **Task 1.2: Define ContextStage Struct.** In `src/db.rs`, define a `ContextStage` struct to represent a row in the new table. It needs `serde` support for serializing the file lists into JSON.
@@ -31,7 +30,6 @@ This phase focuses on setting up the database schema and data structures for man
   #[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
   pub struct ContextStage {
       pub name: String,
-      pub project_root: Option<String>,
       pub read_write_files: Vec<String>,
       pub read_only_files: Vec<String>,
   }
@@ -69,7 +67,7 @@ This phase introduces the `retort stage` command and updates the `send` command 
       pub file_path: Option<String>,
 
       /// Stage the file as read-only.
-      #[arg(short, long, requires = "file_path")]
+      #[arg(short = 'r', long, requires = "file_path")]
       pub read_only: bool,
 
       /// Remove the file from the context stage.
@@ -78,7 +76,9 @@ This phase introduces the `retort stage` command and updates the `send` command 
   }
   ```
 
-- [ ] **Task 2.2: Implement `stage` Command Logic.** In `src/lib.rs`, implement the logic for the `Stage` subcommand in the main `run` function.
+- [ ] **Task 2.2: Update `Send` Command.** In `src/cli.rs`, add an `--ignore-inherited-stage` (`-i`) flag to the `Send` command arguments. This will be used in a later phase to allow starting a chat with a clean context.
+
+- [ ] **Task 2.3: Implement `stage` Command Logic.** In `src/lib.rs`, implement the logic for the `Stage` subcommand in the main `run` function.
 
   The logic will differentiate based on whether `file_path` is provided:
   ```rust
@@ -98,7 +98,7 @@ This phase introduces the `retort stage` command and updates the `send` command 
   }
   ```
 
-- [ ] **Task 2.3: Add CLI Integration Tests.** In `tests/cli.rs`, add new tests for `retort stage`.
+- [ ] **Task 2.4: Add CLI Integration Tests.** In `tests/cli.rs`, add new tests for `retort stage`.
     - Test adding and dropping files, verifying the `context_stages` table is updated.
     - Test `retort stage` (with no arguments) and verify that the output correctly displays both inherited (mocked) and prepared contexts.
 
@@ -141,13 +141,13 @@ This phase adds safety via a project root, snapshots the file context in message
   struct FileMetadata { path: String, hash: String }
   ```
 
-- [ ] **Task 4.2: Add `project` Command.** Create a `project --set-root <path>` command in `src/cli.rs` and `src/lib.rs` to define a project directory. The logic should store the absolute, canonicalized path in the `project_root` field of the 'default' context stage.
+- [ ] **Task 4.2: Add Project Root to Profile.** Integrate the project root into user profiles. This involves modifying the `setup` function in `src/db.rs` to add a `project_root TEXT` column to the `profiles` table, updating the `Profile` struct to include `pub project_root: Option<String>`, and updating database functions like `get_profile_by_name`. In `src/cli.rs`, add a `--set-project-root <path>` argument to the `Profile` command. Finally, implement the logic in `src/lib.rs` to store the absolute, canonicalized path in the 'default' profile.
 
-- [ ] **Task 4.3: Enforce Project Root.** In `src/hooks/postprocessor.rs`, update `apply_and_commit_changes` to accept an `Option<PathBuf>` for the project root. Before applying changes, it must verify that all file paths are within this directory. Update `HookManager` and `Hook` traits to pass this through.
+- [ ] **Task 4.3: Enforce Project Root.** The project root will be loaded from the default profile. In `src/hooks/postprocessor.rs`, update `apply_and_commit_changes` to accept an `Option<PathBuf>` for the project root. Before applying changes, it must verify that all file paths are within this directory. Update `HookManager` and `Hook` traits to pass this through.
 
 - [ ] **Task 4.4: Implement Context Inheritance.** In `src/lib.rs` (`send` command), after a message is sent, clear the 'default' (`prepared`) context stage. The full, merged context has already been saved to the new message's metadata in Task 4.1, and will be used as the `inherited` context for the next turn. If a new chat was started (`--new` or no active tag), the `prepared` stage should also be cleared to ensure a clean slate.
 
-- [ ] **Task 4.5: Add Integration Tests.** Add tests in `tests/cli.rs` for project root enforcement (asserting failure when editing outside the root) and context inheritance (asserting that the stage persists between messages and is cleared on `--new`).
+- [ ] **Task 4.5: Add Integration Tests.** Add tests in `tests/cli.rs` for project root enforcement (using `retort profile --set-project-root`, then asserting failure when editing outside the root) and context inheritance (asserting that the stage persists between messages and is cleared on `--new`).
 
 ## Phase 5: Cleanup and Refinement
 
