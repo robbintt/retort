@@ -54,11 +54,11 @@ ONLY EVER RETURN CODE IN A *SEARCH/REPLACE BLOCK*!
 Every *SEARCH/REPLACE block* must use this format:
 1. The opening fence and code language, eg: {{ fence }}python
 2. The *FULL* file path alone on a line, verbatim. No bold asterisks, no quotes around it, no escaping of characters, etc.
-3. The start of search block: <<<<<<< SEARCH
+3. The start of search block: <<<<<<< MODIFIED_SEARCH
 4. A contiguous chunk of lines to search for in the existing source code
 5. The dividing line: =======
 6. The lines to replace into the source code
-7. The end of the replace block: >>>>>>> REPLACE
+7. The end of the replace block: >>>>>>> MODIFIED_REPLACE
 8. The closing fence: {{ fence }}
 
 Use the *FULL* file path, as shown to you by the user.
