@@ -1,46 +1,150 @@
 # Project Plan: File Management and Prompt Context
 
-This plan outlines the work required to implement file management, allowing users to add read-write and read-only files to the chat context, based on the design in `plans/file-management.md`. The implementation will be broken down into testable phases.
+This plan outlines the work required to implement file management, allowing users to add read-write and read-only files to the chat context, based on the design in `plans/file-management.md`. The implementation will be broken down into testable phases. Each task is designed to be self-contained to facilitate execution by an AI assistant.
 
 ## Phase 1: Database and Core Data Structures for Context
 
-This phase focuses on setting up the database schema and data structures for managing a persistent "context stage".
+This phase focuses on setting up the database schema and data structures for managing a persistent "context stage". This stage will hold file paths that are to be included in prompts.
 
-- [ ] **Task 1.1**: In `src/db.rs`, add a `context_stages` table. It will store the state of the file context between commands. The schema should include: `name` (TEXT, PRIMARY KEY), `project_root` (TEXT, nullable), `read_write_files` (TEXT, as a JSON array of strings), and `read_only_files` (TEXT, as a JSON array of strings). Insert a 'default' stage with empty values.
-- [ ] **Task 1.2**: In `src/db.rs`, define a `ContextStage` struct that mirrors the table structure. It should derive `serde::{Serialize, Deserialize}` to handle JSON conversion for file lists.
-- [ ] **Task 1.3**: In `src/db.rs`, implement functions to manage the `context_stages` table: `get_context_stage(name)`, `update_context_stage(name, stage)`, `add_file_to_stage(name, file_path, read_only)`, and `remove_file_from_stage(name, file_path)`.
-- [ ] **Task 1.4**: In `tests/integration/`, add a new test file or modify an existing one to create unit tests for the new database functions to ensure they correctly manipulate the `context_stages` table and its JSON data.
+- [ ] **Task 1.1: Update Database Schema.** In `src/db.rs`, modify the `setup` function to create a new `context_stages` table and populate it with a 'default' entry.
+
+  Specifically, add the following SQL to the `conn.execute_batch` call in `src/db.rs`:
+  ```sql
+        CREATE TABLE IF NOT EXISTS context_stages (
+            name TEXT PRIMARY KEY NOT NULL,
+            project_root TEXT,
+            read_write_files TEXT NOT NULL,
+            read_only_files TEXT NOT NULL
+        );
+
+        INSERT OR IGNORE INTO context_stages (name, project_root, read_write_files, read_only_files) VALUES ('default', NULL, '[]', '[]');
+  ```
+
+- [ ] **Task 1.2: Define ContextStage Struct.** In `src/db.rs`, define a `ContextStage` struct to represent a row in the new table. It needs `serde` support for serializing the file lists into JSON.
+
+  Add this struct definition to `src/db.rs` and the required `use` statements at the top of the file. You will need to add `serde` and `serde_json` to `Cargo.toml` in a later step.
+  ```rust
+  use serde::{Deserialize, Serialize};
+  
+  #[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
+  pub struct ContextStage {
+      pub name: String,
+      pub project_root: Option<String>,
+      pub read_write_files: Vec<String>,
+      pub read_only_files: Vec<String>,
+  }
+  ```
+
+- [ ] **Task 1.3: Implement Context Stage DB Functions.** In `src/db.rs`, add functions to get, update, and modify the 'default' context stage. These functions will handle reading the JSON, modifying the file lists, and writing back to the database.
+
+  - `get_context_stage(conn: &Connection, name: &str) -> Result<ContextStage>`: Fetches the stage by name and deserializes the file lists.
+  - `update_context_stage(conn: &Connection, stage: &ContextStage) -> Result<()>`: Serializes the file lists and writes the entire stage object back to the database.
+  - `add_file_to_stage(conn: &Connection, name: &str, file_path: &str, read_only: bool) -> Result<()>`: A helper that gets the stage, adds a file path to the correct list (avoiding duplicates), and calls `update_context_stage`.
+  - `remove_file_from_stage(conn: &Connection, name: &str, file_path: &str) -> Result<()>`: A helper that gets the stage, removes a file path from both lists, and calls `update_context_stage`.
+
+- [ ] **Task 1.4: Add Database Unit Tests.** Add a new test file `tests/integration/context.rs` (and `mod context;` in `tests/integration/mod.rs`) to test the new database functions.
+
+  The tests should cover:
+    1. Setting up an in-memory database.
+    2. Calling `add_file_to_stage` to add a read-write file and a read-only file.
+    3. Calling `get_context_stage` and asserting that the retrieved data is correct.
+    4. Calling `remove_file_from_stage` and asserting that the file is gone.
 
 ## Phase 2: CLI for Staging Files
 
-This phase introduces the `retort stage` command, allowing users to interact with the context stage.
+This phase introduces the `retort stage` command, allowing users to manage the file context from the command line.
 
-- [ ] **Task 2.1**: In `src/cli.rs`, add a `Stage` subcommand to the main `Command` enum. This subcommand should handle adding, removing, and viewing files in the stage (`retort stage <file_path> [--read-only] [--drop]`, `retort stage list`).
-- [ ] **Task 2.2**: In `src/lib.rs`, implement the logic for the `Stage` subcommand. This will involve parsing the arguments and calling the appropriate database functions from Phase 1. Provide user feedback, such as "Staged file 'path/to/file.rs' as read-write."
-- [ ] **Task 2.3**: In `tests/cli.rs`, add an integration test for the `retort stage` command. The test should execute the CLI command and then query the database to verify that the `context_stages` table is updated correctly.
+- [ ] **Task 2.1: Create `stage` Subcommand.** In `src/cli.rs`, add a `Stage` subcommand to the main `Command` enum to handle adding, removing, and listing files.
 
-## Phase 3: Prompt Integration and Metadata
+  Add the following to `src/cli.rs`:
+  ```rust
+  // In the Command enum
+  Stage(StageArgs),
 
-This phase connects the context stage to the prompt generation process and ensures file state is snapshotted in message metadata.
+  // New struct for arguments
+  #[derive(Parser, Debug)]
+  pub struct StageArgs {
+      /// Path to a file to add or remove from the context stage.
+      pub file_path: Option<String>,
 
-- [ ] **Task 3.1**: In `src/lib.rs` (`send` command), fetch the current context stage from the database. Read the contents of each file specified in the stage.
-- [ ] **Task 3.2**: In `src/prompt.rs`, update `build_prompt_messages` to accept the file contents. The function will format the file paths and contents into strings to be injected into the prompt. Replace the hardcoded stub constants (`CHAT_FILES`, `READ_ONLY_FILES`) with this new dynamic data.
-- [ ] **Task 3.3**: Update the `prompts/diff_fenced.j2` template to correctly render the lists of read-only and read-write files, including their paths and fenced content blocks.
-- [ ] **Task 3.4**: In `src/lib.rs` (`send` command), before saving the user message, calculate a hash (e.g., SHA256) of each staged file's content. Create a serializable struct containing the file lists (path and hash) and store it as a JSON string in the `metadata` column of the `messages` table.
+      /// Stage the file as read-only.
+      #[arg(short, long)]
+      pub read_only: bool,
 
-## Phase 4: Project Root and Context Inheritance
+      /// Remove the file from the context stage.
+      #[arg(short, long, FKA="drop")]
+      pub remove: bool,
 
-This phase introduces the concept of a project root for safety and makes the file context persist across messages in a chat.
+      /// List all files in the context stage.
+      #[arg(long, conflicts_with_all = &["file_path", "read_only", "remove"])]
+      pub list: bool,
+  }
+  ```
 
-- [ ] **Task 4.1**: Create a `project set-root [<path>]` command in `src/cli.rs` and `src/lib.rs` to define a project directory. The absolute, canonicalized path should be stored in the `project_root` field of the 'default' context stage.
-- [ ] **Task 4.2**: In `src/hooks/postprocessor.rs`, update the `apply_and_commit_changes` function to enforce the project root. The `send` command will pass the project root from the context to the hook. The hook must verify that all file modifications are within this directory, failing with an error if a path is outside.
-- [ ] **Task 4.3**: In `src/lib.rs`'s `send` command, implement context inheritance. If a chat is continued (not `--new`), after the turn is complete, reload the context from the user message just created and write it back to the 'default' row in `context_stages`. If the chat was `--new`, clear the file lists in the 'default' stage.
-- [ ] **Task 4.4**: Add an integration test in `tests/cli.rs` to verify project root enforcement. The test should use a mock LLM response that attempts to write a file outside the project root and assert that the operation fails as expected.
-- [ ] **Task 4.5**: Add an integration test to verify context inheritance. The test should: 1. Stage a file. 2. Send a message. 3. Check that the file context is still present in the `context_stages` table for the next turn.
+- [ ] **Task 2.2: Implement `stage` Command Logic.** In `src/lib.rs`, implement the logic for the `Stage` subcommand in the main `run` function. This will parse the arguments and call the appropriate `db` functions from Phase 1.
+
+  In the `run` function's `match command` block, add a new arm:
+  ```rust
+  Command::Stage(args) => {
+      if args.list {
+          // Get and print the stage contents.
+      } else if let Some(file_path) = args.file_path {
+          if args.remove {
+              // Call db::remove_file_from_stage and print confirmation.
+          } else {
+              // Call db::add_file_to_stage and print confirmation.
+          }
+      }
+  }
+  ```
+
+- [ ] **Task 2.3: Add CLI Integration Tests.** In `tests/cli.rs`, add a new test for the `retort stage` command. The test should use `assert_cmd` to run the CLI command and then query the test database directly to verify the `context_stages` table was updated correctly.
+
+## Phase 3: Prompt Integration
+
+This phase connects the file context stage to the prompt generation process.
+
+- [ ] **Task 3.1: Load Files in `send` Command.** In `src/lib.rs` (inside the `Command::Send` arm), before building the prompt, fetch the 'default' context stage. For each file path in its lists, read the file content from disk. Store these as `Vec<(path, content)>` for both read-write and read-only files. Pass these vectors to `prompt::build_prompt_messages`.
+
+- [ ] **Task 3.2: Update `build_prompt_messages`.** In `src/prompt.rs`, update the signature of `build_prompt_messages` to accept the file content vectors.
+  ```rust
+  pub fn build_prompt_messages(
+      done_messages: Vec<HistoryMessage>,
+      cur_messages: Vec<HistoryMessage>,
+      read_write_files: &[(String, String)], // (path, content)
+      read_only_files: &[(String, String)],  // (path, content)
+  ) -> Result<Vec<Message>>
+  ```
+
+- [ ] **Task 3.3: Inject File Context into Prompt.** In `src/prompt.rs`, inside `build_prompt_messages`, programmatically construct and insert user/assistant message pairs for the files. This mimics the conversational file-providing pattern shown in `prompts/diff_fenced.j2`.
+    - If `read_only_files` is not empty, create a `user` message with the content from `READ_ONLY_FILES_PREFIX`, followed by each file's path and content in a fenced block. Then, add an `assistant` message with the fixed response "Ok, I will use these files as references.".
+    - Do the same for `read_write_files` using `CHAT_FILES_PREFIX` and the response "Ok, any changes I propose will be to those files.".
+    - Insert these new `Message` objects into `result_messages` after the system prompt but before the main conversation history (`done_messages`).
+
+## Phase 4: Metadata, Project Root, and Context Inheritance
+
+This phase adds safety via a project root, snapshots the file context in message metadata, and makes the context persist across turns.
+
+- [ ] **Task 4.1: Store Prompt Metadata.** In `src/lib.rs` (in `send`), create a serializable struct to hold file paths and their content hashes (e.g., SHA256). Populate it and serialize it to JSON. Store this JSON in the `metadata` column for the new `user` message. Have `sha2` and `serde_json` added to `Cargo.toml`.
+  ```rust
+  #[derive(Serialize, Deserialize)]
+  struct PromptMetadata { /* ... */ }
+  #[derive(Serialize, Deserialize)]
+  struct FileMetadata { path: String, hash: String }
+  ```
+
+- [ ] **Task 4.2: Add `project` Command.** Create a `project --set-root <path>` command in `src/cli.rs` and `src/lib.rs` to define a project directory. The logic should store the absolute, canonicalized path in the `project_root` field of the 'default' context stage.
+
+- [ ] **Task 4.3: Enforce Project Root.** In `src/hooks/postprocessor.rs`, update `apply_and_commit_changes` to accept an `Option<PathBuf>` for the project root. Before applying changes, it must verify that all file paths are within this directory. Update `HookManager` and `Hook` traits to pass this through.
+
+- [ ] **Task 4.4: Implement Context Inheritance.** In `src/lib.rs` (`send` command), after a turn is complete, if it was a continuation of a chat (not `--new`), read the metadata from the user message that was just created. Use its file list to update the 'default' context stage for the next turn. If the chat was `--new`, clear the file lists in the 'default' stage.
+
+- [ ] **Task 4.5: Add Integration Tests.** Add tests in `tests/cli.rs` for project root enforcement (asserting failure when editing outside the root) and context inheritance (asserting that the stage persists between messages and is cleared on `--new`).
 
 ## Phase 5: Cleanup and Refinement
 
-This final phase removes obsolete code and improves usability.
+This final phase removes obsolete code and improves documentation.
 
-- [ ] **Task 5.1**: In `src/db.rs`, remove the `files` table and any related (now unused) functions, as its role is replaced by storing file information in the `messages` table's `metadata` field.
-- [ ] **Task 5.2**: Update `ai.md` and other documentation to reflect the new file management workflow and the `retort stage` command.
+- [ ] **Task 5.1: Remove `files` Table.** In `src/db.rs`, remove the `CREATE TABLE files` statement from the schema in the `setup` function. Also remove any related, now-unused functions that referenced it.
+
+- [ ] **Task 5.2: Update Documentation.** Update `ai.md` and `README.md` to document the new `retort stage` and `retort project` commands and the overall file management workflow.
