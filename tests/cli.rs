@@ -8,6 +8,20 @@ use tempfile::tempdir;
 
 // CLI tests with fences are in cli_fence.rs because they break ai pair programming more often.
 
+fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result<()> {
+    fs::create_dir_all(dst.as_ref())?;
+    for entry in fs::read_dir(src.as_ref())? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        if ty.is_dir() {
+            copy_dir_all(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        } else {
+            fs::copy(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        }
+    }
+    Ok(())
+}
+
 #[test]
 fn test_list_chats_format_and_logic() -> Result<()> {
     let temp_dir = tempdir()?;
@@ -163,6 +177,13 @@ fn test_send_command() -> Result<()> {
     fs::write(
         config_path,
         format!("database_path: {}", db_path.to_str().unwrap()),
+    )?;
+
+    // Copy prompts directory for the test so that the templates can be found
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    copy_dir_all(
+        std::path::Path::new(manifest_dir).join("prompts"),
+        temp_dir.path().join("prompts"),
     )?;
 
     // Setup: create a chat and tag it
@@ -413,6 +434,13 @@ fn test_context_inheritance() -> Result<()> {
         format!("database_path: {}", db_path.to_str().unwrap()),
     )?;
     let _conn = retort::db::setup(db_path.to_str().unwrap())?;
+
+    // Copy prompts directory for the test so that the templates can be found
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    copy_dir_all(
+        std::path::Path::new(manifest_dir).join("prompts"),
+        temp_dir.path().join("prompts"),
+    )?;
 
     // Create some dummy files to stage
     fs::write(temp_dir.path().join("file1.txt"), "content1")?;
