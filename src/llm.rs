@@ -45,7 +45,10 @@ pub async fn get_response_stream(
     ))
 }
 
-pub async fn get_response(messages: &[ChatMessage], system_prompt: Option<String>) -> Result<String> {
+pub async fn get_response(
+    messages: &[ChatMessage],
+    system_prompt: Option<String>,
+) -> Result<String> {
     // In a test environment, if MOCK_LLM is set, we return a mock response
     // without making a network call.
     if let Ok(mock_content) = std::env::var("MOCK_LLM_CONTENT") {
