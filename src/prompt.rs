@@ -37,7 +37,18 @@ pub fn build_prompt_messages(
     }
 
     let mut env = Environment::new();
-    env.set_loader(minijinja::path_loader("prompts/"));
+    env.add_template(
+        "_diff_fenced_system_prompt.j2",
+        include_str!("../prompts/_diff_fenced_system_prompt.j2"),
+    )?;
+    env.add_template(
+        "_shell_cmd_prompt.j2",
+        include_str!("../prompts/_shell_cmd_prompt.j2"),
+    )?;
+    env.add_template(
+        "_shell_cmd_reminder.j2",
+        include_str!("../prompts/_shell_cmd_reminder.j2"),
+    )?;
     let tmpl = env.get_template("_diff_fenced_system_prompt.j2")?;
 
     let fence = "```";
