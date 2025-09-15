@@ -364,40 +364,34 @@ pub async fn run() -> anyhow::Result<()> {
                 // 5. Print context view for user
                 println!("---");
                 println!("CONTEXT (for this message):");
-                println!("Inherited:");
-                if !inherited_stage.read_write_files.is_empty() {
-                    println!("  Read-Write:");
-                    for file in &inherited_stage.read_write_files {
-                        println!("    - {}", file.path);
+
+                let mut sorted_paths: Vec<String> = final_context_map.keys().cloned().collect();
+                sorted_paths.sort();
+
+                let mut final_rw: Vec<String> = Vec::new();
+                let mut final_ro: Vec<String> = Vec::new();
+
+                for path in &sorted_paths {
+                    if *final_context_map.get(path).unwrap() {
+                        final_ro.push(path.clone());
+                    } else {
+                        final_rw.push(path.clone());
                     }
                 }
-                if !inherited_stage.read_only_files.is_empty() {
-                    println!("  Read-Only:");
-                    for file in &inherited_stage.read_only_files {
-                        println!("    - {}", file.path);
-                    }
-                }
-                if inherited_stage.read_write_files.is_empty()
-                    && inherited_stage.read_only_files.is_empty()
-                {
-                    println!("  (empty)");
-                }
-                println!("Prepared:");
-                if !prepared_stage.read_write_files.is_empty() {
+
+                if !final_rw.is_empty() {
                     println!("  Read-Write:");
-                    for path in &prepared_stage.read_write_files {
+                    for path in &final_rw {
                         println!("    - {}", path);
                     }
                 }
-                if !prepared_stage.read_only_files.is_empty() {
+                if !final_ro.is_empty() {
                     println!("  Read-Only:");
-                    for path in &prepared_stage.read_only_files {
+                    for path in &final_ro {
                         println!("    - {}", path);
                     }
                 }
-                if prepared_stage.read_write_files.is_empty()
-                    && prepared_stage.read_only_files.is_empty()
-                {
+                if final_rw.is_empty() && final_ro.is_empty() {
                     println!("  (empty)");
                 }
                 println!("---");

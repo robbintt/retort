@@ -287,14 +287,22 @@ pub fn add_file_to_stage(
     read_only: bool,
 ) -> Result<()> {
     let mut stage = get_context_stage(conn, name)?;
-    let file_list = if read_only {
-        &mut stage.read_only_files
-    } else {
-        &mut stage.read_write_files
-    };
+    let file_path_string = file_path.to_string();
 
-    if !file_list.contains(&file_path.to_string()) {
-        file_list.push(file_path.to_string());
+    if read_only {
+        // Ensure it's not in the read-write list
+        stage.read_write_files.retain(|f| f != &file_path_string);
+        // Add to read-only list if not present
+        if !stage.read_only_files.contains(&file_path_string) {
+            stage.read_only_files.push(file_path_string);
+        }
+    } else {
+        // Ensure it's not in the read-only list
+        stage.read_only_files.retain(|f| f != &file_path_string);
+        // Add to read-write list if not present
+        if !stage.read_write_files.contains(&file_path_string) {
+            stage.read_write_files.push(file_path_string);
+        }
     }
 
     update_context_stage(conn, &stage)
