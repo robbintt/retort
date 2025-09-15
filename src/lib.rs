@@ -3,7 +3,7 @@ use clap::Parser;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::{stdout, Write};
 use std::path::PathBuf;
@@ -17,6 +17,44 @@ pub mod prompt;
 
 use cli::{Cli, Command, TagSubcommand};
 use hooks::HookManager;
+
+fn calculate_final_context(
+    inherited_stage: &MessageMetadata,
+    prepared_stage: &db::ContextStage,
+) -> HashMap<String, bool> {
+    let mut final_context_map: HashMap<String, bool> = HashMap::new();
+
+    // 1. All files in prepared stage define their final state.
+    for path in &prepared_stage.read_write_files {
+        final_context_map.insert(path.clone(), false);
+    }
+    for path in &prepared_stage.read_only_files {
+        final_context_map.insert(path.clone(), true);
+    }
+    // Dropped files from prepared stage are simply not added.
+
+    // 2. For inherited files, add them only if they haven't been touched by prepared stage.
+    let prepared_files: HashSet<String> = prepared_stage
+        .read_write_files
+        .iter()
+        .chain(prepared_stage.read_only_files.iter())
+        .chain(prepared_stage.dropped_files.iter())
+        .cloned()
+        .collect();
+
+    for file in &inherited_stage.read_write_files {
+        if !prepared_files.contains(&file.path) {
+            final_context_map.insert(file.path.clone(), false);
+        }
+    }
+    for file in &inherited_stage.read_only_files {
+        if !prepared_files.contains(&file.path) {
+            final_context_map.insert(file.path.clone(), true);
+        }
+    }
+
+    final_context_map
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct FileMetadata {
@@ -91,7 +129,7 @@ pub async fn run() -> anyhow::Result<()> {
                 if let Some(file_path) = args.file_path {
                     if args.drop {
                         db::remove_file_from_stage(&conn, "default", &file_path)?;
-                        println!("Removed {} from stage.", file_path);
+                        println!("Marked {} to be dropped from context.", file_path);
                     } else {
                         db::add_file_to_stage(&conn, "default", &file_path, args.read_only)?;
                         let file_type = if args.read_only {
@@ -102,6 +140,7 @@ pub async fn run() -> anyhow::Result<()> {
                         println!("Staged {} as {}.", file_path, file_type);
                     }
                 } else {
+                    // --- Display all contexts ---
                     // 1. Get inherited context
                     let mut inherited_stage: MessageMetadata = Default::default();
                     if let Some(tag) = db::get_active_chat_tag(&conn)? {
@@ -120,44 +159,89 @@ pub async fn run() -> anyhow::Result<()> {
                             }
                         }
                     }
-                    println!("Inherited Context (from active chat):");
-                    if !inherited_stage.read_write_files.is_empty() {
-                        println!("  Read-Write:");
-                        for file in &inherited_stage.read_write_files {
-                            println!("    - {}", file.path);
+                    // 2. Get prepared context
+                    let prepared_stage = db::get_context_stage(&conn, "default")?;
+
+                    // 3. Calculate and display Final Context
+                    let final_context_map =
+                        calculate_final_context(&inherited_stage, &prepared_stage);
+                    println!("Final Context (for next message):");
+                    if final_context_map.is_empty() {
+                        println!("  (empty)");
+                    } else {
+                        let mut final_rw: Vec<String> = Vec::new();
+                        let mut final_ro: Vec<String> = Vec::new();
+                        for (path, is_ro) in &final_context_map {
+                            if *is_ro {
+                                final_ro.push(path.clone());
+                            } else {
+                                final_rw.push(path.clone());
+                            }
+                        }
+                        final_rw.sort();
+                        final_ro.sort();
+
+                        if !final_rw.is_empty() {
+                            println!("  Read-Write:");
+                            for file in final_rw {
+                                println!("    - {}", file);
+                            }
+                        }
+                        if !final_ro.is_empty() {
+                            println!("  Read-Only:");
+                            for file in final_ro {
+                                println!("    - {}", file);
+                            }
                         }
                     }
-                    if !inherited_stage.read_only_files.is_empty() {
-                        println!("  Read-Only:");
-                        for file in &inherited_stage.read_only_files {
-                            println!("    - {}", file.path);
-                        }
-                    }
+
+                    // 4. Display Inherited Context
+                    println!("\nInherited Context (from active chat):");
                     if inherited_stage.read_write_files.is_empty()
                         && inherited_stage.read_only_files.is_empty()
                     {
                         println!("  (empty)");
+                    } else {
+                        if !inherited_stage.read_write_files.is_empty() {
+                            println!("  Read-Write:");
+                            for file in &inherited_stage.read_write_files {
+                                println!("    - {}", file.path);
+                            }
+                        }
+                        if !inherited_stage.read_only_files.is_empty() {
+                            println!("  Read-Only:");
+                            for file in &inherited_stage.read_only_files {
+                                println!("    - {}", file.path);
+                            }
+                        }
                     }
 
-                    // 2. Get prepared context
-                    let prepared_stage = db::get_context_stage(&conn, "default")?;
-                    println!("\nPrepared Context (for next message):");
-                    if !prepared_stage.read_write_files.is_empty() {
-                        println!("  Read-Write:");
-                        for file in &prepared_stage.read_write_files {
-                            println!("    - {}", file);
-                        }
-                    }
-                    if !prepared_stage.read_only_files.is_empty() {
-                        println!("  Read-Only:");
-                        for file in &prepared_stage.read_only_files {
-                            println!("    - {}", file);
-                        }
-                    }
+                    // 5. Display Prepared Context
+                    println!("\nPrepared Context (delta for next message):");
                     if prepared_stage.read_write_files.is_empty()
                         && prepared_stage.read_only_files.is_empty()
+                        && prepared_stage.dropped_files.is_empty()
                     {
                         println!("  (empty)");
+                    } else {
+                        if !prepared_stage.read_write_files.is_empty() {
+                            println!("  Read-Write (add/modify):");
+                            for file in &prepared_stage.read_write_files {
+                                println!("    - {}", file);
+                            }
+                        }
+                        if !prepared_stage.read_only_files.is_empty() {
+                            println!("  Read-Only (add/modify):");
+                            for file in &prepared_stage.read_only_files {
+                                println!("    - {}", file);
+                            }
+                        }
+                        if !prepared_stage.dropped_files.is_empty() {
+                            println!("  Dropped:");
+                            for file in &prepared_stage.dropped_files {
+                                println!("    - {}", file);
+                            }
+                        }
                     }
                 }
             }
@@ -317,20 +401,9 @@ pub async fn run() -> anyhow::Result<()> {
                 // 2. Get prepared context
                 let prepared_stage = db::get_context_stage(&conn, "default")?;
 
-                // 3. Merge contexts. Prepared takes precedence.
-                let mut final_context_map: HashMap<String, bool> = HashMap::new(); // path -> is_readonly
-                for file in &inherited_stage.read_write_files {
-                    final_context_map.insert(file.path.clone(), false);
-                }
-                for file in &inherited_stage.read_only_files {
-                    final_context_map.insert(file.path.clone(), true);
-                }
-                for path in &prepared_stage.read_write_files {
-                    final_context_map.insert(path.clone(), false);
-                }
-                for path in &prepared_stage.read_only_files {
-                    final_context_map.insert(path.clone(), true);
-                }
+                // 3. Merge contexts.
+                let final_context_map =
+                    calculate_final_context(&inherited_stage, &prepared_stage);
 
                 // 4. Load file contents and prepare for prompt, and build metadata
                 let mut read_write_files_prompt = Vec::new();

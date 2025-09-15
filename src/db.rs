@@ -4,6 +4,15 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
+// Internal struct for serialization to avoid breaking changes to the public API
+// and to handle DB data format migration gracefully.
+#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
+struct PreparedContext {
+    read_write_files: Vec<String>,
+    read_only_files: Vec<String>,
+    dropped_files: Vec<String>,
+}
+
 pub fn setup(db_path_str: &str) -> Result<Connection> {
     let db_path = Path::new(db_path_str);
 
@@ -232,11 +241,12 @@ pub fn get_profile_by_name(conn: &Connection, name: &str) -> Result<Profile> {
     .map_err(Into::into)
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct ContextStage {
     pub name: String,
     pub read_write_files: Vec<String>,
     pub read_only_files: Vec<String>,
+    pub dropped_files: Vec<String>,
 }
 
 pub fn get_context_stage(conn: &Connection, name: &str) -> Result<ContextStage> {
@@ -244,26 +254,27 @@ pub fn get_context_stage(conn: &Connection, name: &str) -> Result<ContextStage> 
         "SELECT read_write_files, read_only_files FROM context_stages WHERE name = ?1",
         [name],
         |row| {
-            let read_write_files_json: String = row.get(0)?;
-            let read_only_files_json: String = row.get(1)?;
-            let read_write_files = serde_json::from_str(&read_write_files_json).map_err(|e| {
-                rusqlite::Error::FromSqlConversionFailure(
-                    0,
-                    rusqlite::types::Type::Text,
-                    Box::new(e),
-                )
-            })?;
-            let read_only_files = serde_json::from_str(&read_only_files_json).map_err(|e| {
-                rusqlite::Error::FromSqlConversionFailure(
-                    1,
-                    rusqlite::types::Type::Text,
-                    Box::new(e),
-                )
-            })?;
+            let prepared_json: String = row.get(0)?;
+            // Try to parse as new format (a JSON object with all file lists)
+            if let Ok(prepared) = serde_json::from_str::<PreparedContext>(&prepared_json) {
+                return Ok(ContextStage {
+                    name: name.to_string(),
+                    read_write_files: prepared.read_write_files,
+                    read_only_files: prepared.read_only_files,
+                    dropped_files: prepared.dropped_files,
+                });
+            }
+
+            // Fallback to old format (two separate JSON arrays)
+            let read_write_files = serde_json::from_str(&prepared_json).unwrap_or_default();
+            let ro_json: String = row.get(1)?;
+            let read_only_files = serde_json::from_str(&ro_json).unwrap_or_default();
+
             Ok(ContextStage {
                 name: name.to_string(),
                 read_write_files,
                 read_only_files,
+                dropped_files: Vec::new(),
             })
         },
     )
@@ -271,11 +282,18 @@ pub fn get_context_stage(conn: &Connection, name: &str) -> Result<ContextStage> 
 }
 
 pub fn update_context_stage(conn: &Connection, stage: &ContextStage) -> Result<()> {
-    let read_write_files_json = serde_json::to_string(&stage.read_write_files)?;
-    let read_only_files_json = serde_json::to_string(&stage.read_only_files)?;
+    let prepared = PreparedContext {
+        read_write_files: stage.read_write_files.clone(),
+        read_only_files: stage.read_only_files.clone(),
+        dropped_files: stage.dropped_files.clone(),
+    };
+    let prepared_json = serde_json::to_string(&prepared)?;
+
+    // On update, we migrate to the new format by storing everything in the first column
+    // and clearing the second, ensuring future reads will use the new format.
     conn.execute(
-        "UPDATE context_stages SET read_write_files = ?1, read_only_files = ?2 WHERE name = ?3",
-        (read_write_files_json, read_only_files_json, &stage.name),
+        "UPDATE context_stages SET read_write_files = ?1, read_only_files = '[]' WHERE name = ?2",
+        (prepared_json, &stage.name),
     )?;
     Ok(())
 }
@@ -288,6 +306,9 @@ pub fn add_file_to_stage(
 ) -> Result<()> {
     let mut stage = get_context_stage(conn, name)?;
     let file_path_string = file_path.to_string();
+
+    // When adding a file, it should be removed from the dropped list.
+    stage.dropped_files.retain(|f| f != &file_path_string);
 
     if read_only {
         // Ensure it's not in the read-write list
@@ -346,9 +367,16 @@ pub fn clear_context_stage(conn: &Connection, name: &str) -> Result<()> {
 
 pub fn remove_file_from_stage(conn: &Connection, name: &str, file_path: &str) -> Result<()> {
     let mut stage = get_context_stage(conn, name)?;
+    let file_path_string = file_path.to_string();
 
-    stage.read_write_files.retain(|f| f != file_path);
-    stage.read_only_files.retain(|f| f != file_path);
+    // Remove from any addition lists.
+    stage.read_write_files.retain(|f| f != &file_path_string);
+    stage.read_only_files.retain(|f| f != &file_path_string);
+
+    // Add to the dropped list to ensure it's removed from inherited context.
+    if !stage.dropped_files.contains(&file_path_string) {
+        stage.dropped_files.push(file_path_string);
+    }
 
     update_context_stage(conn, &stage)
 }
