@@ -14,36 +14,67 @@ pub struct PostprocessorHook {}
 
 impl PostprocessorHook {
     fn parse_changes(&self, response: &str) -> anyhow::Result<(String, Vec<FileChange>)> {
-        // This regex captures a file path followed by a SEARCH/REPLACE block.
-        // The block may optionally be wrapped in a markdown code block.
-        let re = Regex::new(
-            r"(?ms)^(?:```[a-zA-Z]*\n)?([\w\./\-_]+)\n<<<<<<< SEARCH\n(.*?)\n=======\n(.*?)\n>>>>>>> REPLACE(?:```)?$",
-        )?;
+        let lines: Vec<&str> = response.lines().collect();
         let mut changes = Vec::new();
-        let mut last_end = 0;
-        let mut commit_message_parts = Vec::new();
+        let mut block_line_indices = std::collections::HashSet::new();
 
-        for cap in re.captures_iter(response) {
-            let path = cap.get(1).unwrap().as_str().trim().to_string();
-            let search_content = cap.get(2).unwrap().as_str().to_string();
-            let replace_content = cap.get(3).unwrap().as_str().to_string();
+        for i in 0..lines.len() {
+            // A block starts with a file path on one line, and "<<<<<<< SEARCH" on the next
+            if lines.get(i + 1) == Some(&"<<<<<<< SEARCH") {
+                let path = lines[i].trim();
+                // Basic heuristic to ensure the path looks like a path
+                if path.is_empty() || path.contains(' ') || path.starts_with('#') {
+                    continue;
+                }
 
-            let change = FileChange {
-                path,
-                search_content,
-                replace_content,
-            };
-            changes.push(change);
+                let mut search_content_lines = Vec::new();
+                let mut replace_content_lines = Vec::new();
+                let mut in_search_section = true;
+                let mut block_found = false;
 
-            let full_match = cap.get(0).unwrap();
-            commit_message_parts.push(response[last_end..full_match.start()].to_string());
-            last_end = full_match.end();
+                // Start searching from after the "<<<<<<< SEARCH" line
+                let mut j = i + 2;
+                while j < lines.len() {
+                    if lines[j] == "=======" {
+                        in_search_section = false;
+                    } else if lines[j] == ">>>>>>> REPLACE" {
+                        block_found = true;
+                        break;
+                    } else if in_search_section {
+                        search_content_lines.push(lines[j]);
+                    } else {
+                        replace_content_lines.push(lines[j]);
+                    }
+                    j += 1;
+                }
+
+                if block_found {
+                    // Mark all lines from the path to the end of the block for exclusion from the commit message
+                    for k in i..=j {
+                        block_line_indices.insert(k);
+                    }
+                    changes.push(FileChange {
+                        path: path.to_string(),
+                        search_content: search_content_lines.join("\n"),
+                        replace_content: replace_content_lines.join("\n"),
+                    });
+                }
+            }
         }
-        commit_message_parts.push(response[last_end..].to_string());
 
-        let commit_message = commit_message_parts.join("").trim().to_string();
+        let mut commit_message_parts = Vec::new();
+        for (i, line) in lines.iter().enumerate() {
+            if !block_line_indices.contains(&i) {
+                commit_message_parts.push(*line);
+            }
+        }
 
-        Ok((commit_message, changes))
+        let commit_message = commit_message_parts.join("\n");
+        // Clean up any markdown fences that ended up in the commit message
+        let re = Regex::new(r"```[a-zA-Z]*|```")?;
+        let cleaned_commit_message = re.replace_all(&commit_message, "");
+
+        Ok((cleaned_commit_message.trim().to_string(), changes))
     }
 
     fn apply_and_commit_changes(
