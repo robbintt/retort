@@ -178,9 +178,13 @@ mod tests {
         let read_write_files = vec![("rw.txt".to_string(), "rw content".to_string())];
         let read_only_files = vec![("ro.txt".to_string(), "ro content".to_string())];
 
-        let messages =
-            build_prompt_messages(done_messages, cur_messages, &read_write_files, &read_only_files)
-                .unwrap();
+        let messages = build_prompt_messages(
+            done_messages,
+            cur_messages,
+            &read_write_files,
+            &read_only_files,
+        )
+        .unwrap();
 
         assert_eq!(messages.len(), 7);
 
