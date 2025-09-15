@@ -56,7 +56,7 @@ This phase focuses on setting up the database schema and data structures for man
 
 This phase introduces the `retort stage` command and updates the `send` command to support the new context model.
 
-- [ ] **Task 2.1: Create `stage` Subcommand.** In `src/cli.rs`, add a `Stage` subcommand to handle adding, removing, and listing files.
+- [ ] **Task 2.1: Create `stage` Subcommand.** In `src/cli.rs`, add a `Stage` subcommand. It will handle adding/removing files when a path is provided, and list the context stage when run with no arguments.
 
   ```rust
   // In the Command enum
@@ -69,30 +69,38 @@ This phase introduces the `retort stage` command and updates the `send` command 
       pub file_path: Option<String>,
 
       /// Stage the file as read-only.
-      #[arg(short, long)]
+      #[arg(short, long, requires = "file_path")]
       pub read_only: bool,
 
       /// Remove the file from the context stage.
-      #[arg(long, short = 'd')]
+      #[arg(long, short = 'd', requires = "file_path")]
       pub drop: bool,
-
-      /// List all files in the context stage.
-      #[arg(long, conflicts_with_all = &["file_path", "read_only", "drop"])]
-      pub list: bool,
   }
   ```
 
-- [ ] **Task 2.2: Implement `stage` Command Logic.** In `src/lib.rs`, implement the logic for the `Stage` subcommand.
+- [ ] **Task 2.2: Implement `stage` Command Logic.** In `src/lib.rs`, implement the logic for the `Stage` subcommand in the main `run` function.
 
-  - For adding/dropping files, call the appropriate `db` functions.
-  - For `list`, implement the logic to display both inherited and prepared contexts:
-    1.  Determine the parent message for the next `send` (based on the active tag).
-    2.  Fetch the parent message and read its metadata to get the **Inherited Context**. Display it. (This depends on Phase 4 so it can be stubbed for now).
-    3.  Fetch the `default` context stage from the database to get the **Prepared Context**. Display it.
+  The logic will differentiate based on whether `file_path` is provided:
+  ```rust
+  Command::Stage(args) => {
+      if let Some(file_path) = args.file_path {
+          // A file path was provided, so we are adding or dropping a file.
+          if args.drop {
+              // Call db::remove_file_from_stage and print confirmation.
+          } else {
+              // Call db::add_file_to_stage and print confirmation.
+          }
+      } else {
+          // No file path, so list both inherited and prepared contexts.
+          // 1. Determine parent message, fetch, and display Inherited Context.
+          // 2. Fetch 'default' stage and display Prepared Context.
+      }
+  }
+  ```
 
 - [ ] **Task 2.3: Add CLI Integration Tests.** In `tests/cli.rs`, add new tests for `retort stage`.
     - Test adding and dropping files, verifying the `context_stages` table is updated.
-    - Test `retort stage --list` and verify that the output correctly displays both inherited (mocked) and prepared contexts.
+    - Test `retort stage` (with no arguments) and verify that the output correctly displays both inherited (mocked) and prepared contexts.
 
 ## Phase 3: Prompt Integration
 
