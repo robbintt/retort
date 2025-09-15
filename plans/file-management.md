@@ -16,5 +16,18 @@ The question then is how we have the "staging" or "staged" context.  And should 
 
 So, my first impression is that we have a "context stage" for the next message, which includes the last message and its "inherited context".  We don't need to register a new stage. For now let's have a "context_stages" table with only 1 row named "default". Later on we can allow the user to switch stages.  The mechanism will be that the user can add files to this stage record as read write or read only, and whatever message they send will apply the stage to the prompt template when the message is submitted.  The stored user message metadata includes the stage contents, but also adds the file hashes for reproducibility later.   Then, the stage is cleared.  But, the user by default will be using a tagged message, which means the next message will get the last "stage" in the "inherited stage".  In this way, the stage will accumulate over the chat.
 
+### Prepared vs. Inherited Stage
+
+To make this clear to the user, we will distinguish between two types of context:
+
+1.  **Inherited Context**: The context (read-write and read-only files) that was used for the parent message of the current chat. This is fetched from the parent message's metadata. It provides a persistent, cumulative context for a conversation.
+2.  **Prepared Context**: A temporary "staging area" for the *next* message. Users modify this using `retort stage file` commands. This context is stored in the 'default' row of the `context_stages` table. It represents the changes the user wants to make for the next turn (adding or removing files from the inherited context).
+
+The `retort stage` command will display both contexts separately, so the user has a clear picture of what will be sent. When `retort send` is run, both contexts are merged to form the final prompt context. This merged context is then saved to the new message's metadata, becoming the inherited context for the next turn. After the send, the prepared context is cleared.
+
+A new flag, `retort send --ignore-inherited-stage` (or `-i`), will allow the user to start a turn with a "clean slate," using only the prepared context and ignoring the inherited one.
+
 So, I guess the user needs a command `retort stage file <myfile>` which is implicit --read-write/-w and `retort stage file <myfile> --read-only/-r
 And they need a command `retort stage file <myfile> --drop/-d` which will drop the file from the stage, e.g. it may be dropped from the inherited stage or it may be added to and then dropped from the working stage.
+
+Finally, `retort stage` with no arguments should show the current staged context.

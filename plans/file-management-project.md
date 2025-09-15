@@ -54,11 +54,10 @@ This phase focuses on setting up the database schema and data structures for man
 
 ## Phase 2: CLI for Staging Files
 
-This phase introduces the `retort stage` command, allowing users to manage the file context from the command line.
+This phase introduces the `retort stage` command and updates the `send` command to support the new context model.
 
-- [ ] **Task 2.1: Create `stage` Subcommand.** In `src/cli.rs`, add a `Stage` subcommand to the main `Command` enum to handle adding, removing, and listing files.
+- [ ] **Task 2.1: Create `stage` Subcommand.** In `src/cli.rs`, add a `Stage` subcommand to handle adding, removing, and listing files.
 
-  Add the following to `src/cli.rs`:
   ```rust
   // In the Command enum
   Stage(StageArgs),
@@ -83,30 +82,29 @@ This phase introduces the `retort stage` command, allowing users to manage the f
   }
   ```
 
-- [ ] **Task 2.2: Implement `stage` Command Logic.** In `src/lib.rs`, implement the logic for the `Stage` subcommand in the main `run` function. This will parse the arguments and call the appropriate `db` functions from Phase 1.
+- [ ] **Task 2.2: Implement `stage` Command Logic.** In `src/lib.rs`, implement the logic for the `Stage` subcommand.
 
-  In the `run` function's `match command` block, add a new arm:
-  ```rust
-  Command::Stage(args) => {
-      if args.list {
-          // Get and print the stage contents.
-      } else if let Some(file_path) = args.file_path {
-          if args.drop {
-              // Call db::remove_file_from_stage and print confirmation.
-          } else {
-              // Call db::add_file_to_stage and print confirmation.
-          }
-      }
-  }
-  ```
+  - For adding/dropping files, call the appropriate `db` functions.
+  - For `list`, implement the logic to display both inherited and prepared contexts:
+    1.  Determine the parent message for the next `send` (based on the active tag).
+    2.  Fetch the parent message and read its metadata to get the **Inherited Context**. Display it. (This depends on Phase 4 so it can be stubbed for now).
+    3.  Fetch the `default` context stage from the database to get the **Prepared Context**. Display it.
 
-- [ ] **Task 2.3: Add CLI Integration Tests.** In `tests/cli.rs`, add a new test for the `retort stage` command. The test should use `assert_cmd` to run the CLI command and then query the test database directly to verify the `context_stages` table was updated correctly.
+- [ ] **Task 2.3: Add CLI Integration Tests.** In `tests/cli.rs`, add new tests for `retort stage`.
+    - Test adding and dropping files, verifying the `context_stages` table is updated.
+    - Test `retort stage --list` and verify that the output correctly displays both inherited (mocked) and prepared contexts.
 
 ## Phase 3: Prompt Integration
 
 This phase connects the file context stage to the prompt generation process.
 
-- [ ] **Task 3.1: Load Files in `send` Command.** In `src/lib.rs` (inside the `Command::Send` arm), before building the prompt, fetch the 'default' context stage. For each file path in its lists, read the file content from disk. Store these as `Vec<(path, content)>` for both read-write and read-only files. Pass these vectors to `prompt::build_prompt_messages`.
+- [ ] **Task 3.1: Load Files in `send` Command.** In `src/lib.rs` (in `Command::Send`), assemble the file context before building the prompt:
+    1.  **Inherited Context**: If `ignore_inherited_stage` flag is `false`, find the parent message, deserialize its metadata (from Task 4.1), and load the files listed there.
+    2.  **Prepared Context**: Fetch the 'default' context stage from the database and load its files.
+    3.  **Merge Contexts**: Combine both contexts. The prepared context's changes (additions/removals) take precedence.
+    4.  Read the content of all files in the final merged context from disk.
+    5.  Pass the file contents to `prompt::build_prompt_messages`.
+    6.  Print a view of the final context (split by Inherited/Prepared) for the user.
 
 - [ ] **Task 3.2: Update `build_prompt_messages`.** In `src/prompt.rs`, update the signature of `build_prompt_messages` to accept the file content vectors.
   ```rust
@@ -139,7 +137,7 @@ This phase adds safety via a project root, snapshots the file context in message
 
 - [ ] **Task 4.3: Enforce Project Root.** In `src/hooks/postprocessor.rs`, update `apply_and_commit_changes` to accept an `Option<PathBuf>` for the project root. Before applying changes, it must verify that all file paths are within this directory. Update `HookManager` and `Hook` traits to pass this through.
 
-- [ ] **Task 4.4: Implement Context Inheritance.** In `src/lib.rs` (`send` command), after a turn is complete, if it was a continuation of a chat (not `--new`), read the metadata from the user message that was just created. Use its file list to update the 'default' context stage for the next turn. If the chat was `--new`, clear the file lists in the 'default' stage.
+- [ ] **Task 4.4: Implement Context Inheritance.** In `src/lib.rs` (`send` command), after a message is sent, clear the 'default' (`prepared`) context stage. The full, merged context has already been saved to the new message's metadata in Task 4.1, and will be used as the `inherited` context for the next turn. If a new chat was started (`--new` or no active tag), the `prepared` stage should also be cleared to ensure a clean slate.
 
 - [ ] **Task 4.5: Add Integration Tests.** Add tests in `tests/cli.rs` for project root enforcement (asserting failure when editing outside the root) and context inheritance (asserting that the stage persists between messages and is cleared on `--new`).
 

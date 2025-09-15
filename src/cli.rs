@@ -57,6 +57,10 @@ pub enum Command {
         /// Do not stream the response (overrides config).
         #[arg(long)]
         no_stream: bool,
+
+        /// Ignore the inherited file context from the parent message.
+        #[arg(long, short = 'i', conflicts_with = "new")]
+        ignore_inherited_stage: bool,
     },
 }
 
