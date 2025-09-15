@@ -441,18 +441,6 @@ test-file.txt
 <<<<<<< SEARCH
 hello world
 
-    // Run retort send. It should trigger the postprocessor hook.
-    Command::cargo_bin("retort")?
-        .current_dir(project_dir)
-        .arg("send")
-        .arg("--chat")
-        .arg("hook-test")
-        .arg("make a change")
-        .env("HOME", &home_dir)
-        .env("MOCK_LLM_CONTENT", &mock_response)
-        .assert()
-        .success();
-
     // Verify file content change
     let new_content = fs::read_to_string(&file_to_change)?;
     assert_eq!(new_content, "hello rust\n");
