@@ -402,8 +402,7 @@ pub async fn run() -> anyhow::Result<()> {
                 let prepared_stage = db::get_context_stage(&conn, "default")?;
 
                 // 3. Merge contexts.
-                let final_context_map =
-                    calculate_final_context(&inherited_stage, &prepared_stage);
+                let final_context_map = calculate_final_context(&inherited_stage, &prepared_stage);
 
                 // 4. Load file contents and prepare for prompt, and build metadata
                 let mut read_write_files_prompt = Vec::new();
