@@ -71,8 +71,8 @@ impl PostprocessorHook {
         }
 
         let commit_message = commit_message_parts.join("\n");
-        // Clean up any markdown fences that ended up in the commit message
-        let re = Regex::new(r"```[a-zA-Z]*|```")?;
+        // Clean up any markdown code blocks that ended up in the commit message
+        let re = Regex::new(r"(?s)```[a-zA-Z]*\n?.*?\n?```")?;
         let cleaned_commit_message = re.replace_all(&commit_message, "");
 
         Ok((cleaned_commit_message.trim().to_string(), changes))
@@ -115,7 +115,12 @@ impl PostprocessorHook {
             if let Some(parent) = Path::new(&change.path).parent() {
                 fs::create_dir_all(parent)?;
             }
-            fs::write(&change.path, new_content)?;
+
+            let mut final_content = new_content;
+            if !final_content.is_empty() && !final_content.ends_with('\n') {
+                final_content.push('\n');
+            }
+            fs::write(&change.path, final_content)?;
         }
 
         println!("Staging changes...");
