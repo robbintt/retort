@@ -1,7 +1,7 @@
 use crate::hooks::Hook;
 use regex::Regex;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[derive(Debug)]
@@ -82,9 +82,29 @@ impl PostprocessorHook {
         &self,
         commit_message: &str,
         changes: &[FileChange],
+        project_root: &Option<PathBuf>,
     ) -> anyhow::Result<()> {
         if changes.is_empty() {
             return Ok(());
+        }
+
+        if let Some(root) = project_root {
+            for change in changes {
+                let path = PathBuf::from(&change.path);
+                let absolute_path = if path.is_absolute() {
+                    path.clone()
+                } else {
+                    std::env::current_dir()?.join(path)
+                };
+                let canonical_path = absolute_path.canonicalize()?;
+                if !canonical_path.starts_with(root) {
+                    anyhow::bail!(
+                        "Attempted to modify file {} which is outside the project root {}.",
+                        change.path,
+                        root.display()
+                    );
+                }
+            }
         }
 
         for change in changes {
@@ -155,10 +175,14 @@ impl PostprocessorHook {
 }
 
 impl Hook for PostprocessorHook {
-    fn post_send(&self, llm_response: &str) -> anyhow::Result<()> {
+    fn post_send(
+        &self,
+        llm_response: &str,
+        project_root: &Option<PathBuf>,
+    ) -> anyhow::Result<()> {
         let (commit_message, changes) = self.parse_changes(llm_response)?;
         if !changes.is_empty() {
-            self.apply_and_commit_changes(&commit_message, &changes)?;
+            self.apply_and_commit_changes(&commit_message, &changes, project_root)?;
         }
         Ok(())
     }

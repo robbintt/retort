@@ -1,7 +1,13 @@
 pub mod postprocessor;
 
+use std::path::PathBuf;
+
 pub trait Hook {
-    fn post_send(&self, llm_response: &str) -> anyhow::Result<()>;
+    fn post_send(
+        &self,
+        llm_response: &str,
+        project_root: &Option<PathBuf>,
+    ) -> anyhow::Result<()>;
 }
 
 pub struct HookManager {
@@ -17,9 +23,13 @@ impl HookManager {
         self.hooks.push(hook);
     }
 
-    pub fn run_post_send_hooks(&self, llm_response: &str) -> anyhow::Result<()> {
+    pub fn run_post_send_hooks(
+        &self,
+        llm_response: &str,
+        project_root: &Option<PathBuf>,
+    ) -> anyhow::Result<()> {
         for hook in &self.hooks {
-            hook.post_send(llm_response)?;
+            hook.post_send(llm_response, project_root)?;
         }
         Ok(())
     }

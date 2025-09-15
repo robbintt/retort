@@ -268,6 +268,9 @@ pub async fn run() -> anyhow::Result<()> {
                 no_stream,
                 ignore_inherited_stage,
             } => {
+                let profile = db::get_profile_by_name(&conn, "default")?;
+                let project_root = profile.project_root.map(PathBuf::from);
+
                 let mut parent_id: Option<i64> = None;
                 let mut chat_tag_for_update: Option<String> = None;
 
@@ -450,7 +453,7 @@ pub async fn run() -> anyhow::Result<()> {
                     llm::get_response(&llm_messages).await?
                 };
 
-                hook_manager.run_post_send_hooks(&assistant_response)?;
+                hook_manager.run_post_send_hooks(&assistant_response, &project_root)?;
 
                 db::clear_context_stage(&conn, "default")?;
 

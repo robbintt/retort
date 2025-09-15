@@ -679,3 +679,53 @@ fn test_stage_command() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn test_project_root_enforcement() -> Result<()> {
+    // Setup project and home directories
+    let project_temp_dir = tempdir()?;
+    let project_dir = project_temp_dir.path();
+    let home_dir = project_dir.join("home");
+    fs::create_dir_all(&home_dir)?;
+    let db_path = home_dir.join("test.db");
+
+    // Setup config and db
+    let config_dir = home_dir.join(".retort");
+    fs::create_dir_all(&config_dir)?;
+    fs::write(
+        config_dir.join("config.yaml"),
+        format!("database_path: {}", db_path.to_str().unwrap()),
+    )?;
+    let _conn = retort::db::setup(db_path.to_str().unwrap())?;
+
+    // Setup git repo
+    Command::new("git")
+        .current_dir(project_dir)
+        .arg("init")
+        .status()?;
+    Command::new("git")
+        .current_dir(project_dir)
+        .args(["config", "user.name", "Test"])
+        .status()?;
+    Command::new("git")
+        .current_dir(project_dir)
+        .args(["config", "user.email", "test@example.com"])
+        .status()?;
+
+    // Set project root
+    let project_root_str = project_dir.to_str().unwrap();
+    Command::cargo_bin("retort")?
+        .args(["profile", "--set-project-root", project_root_str])
+        .env("HOME", &home_dir)
+        .assert()
+        .success();
+
+    // Test 1: Write inside project root (should succeed)
+    let internal_file = project_dir.join("internal.txt");
+    fs::write(&internal_file, "original content")?;
+    let mock_response_inside = format!(
+        r#"feat: write inside
+
+{}
+<<<<<<< SEARCH
+original content
