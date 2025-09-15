@@ -1,6 +1,13 @@
 #!/bin/bash
 set -e
 
+for cmd in git patch; do
+  if ! command -v "$cmd" &> /dev/null; then
+    echo "$cmd is not installed. Please install it to continue." >&2
+    exit 1
+  fi
+done
+
 # Function to run on any error
 handle_error() {
     echo "CI checks failed."
