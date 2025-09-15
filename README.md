@@ -110,6 +110,41 @@ To see all tags and which message ID they point to, use `tag list`.
 retort tag list
 ```
 
+### Managing File Context
+
+You can stage files to be included in the context for your next prompt. This allows the model to see the content of your local files.
+
+#### Staging a File
+
+To add a file to the context, use `retort stage`. By default, files are added as "read-write", meaning the model can propose changes to them.
+
+```bash
+# Stage a file as read-write
+retort stage src/main.rs
+```
+
+To stage a file as "read-only", use the `-r` flag. The model will use this file as a reference but will not propose changes to it.
+
+```bash
+# Stage a file as read-only
+retort stage -r important_logic.rs
+```
+
+#### Removing a File from the Stage
+
+To remove a file from the context stage, use the `-d` or `--drop` flag.
+
+```bash
+retort stage -d src/main.rs
+```
+
+#### Viewing the Staged Context
+
+Running `retort stage` with no arguments shows the current context that will be used for the next message. This is split into two parts:
+
+-   **Inherited Context**: Files that were part of the previous message in the conversation. This context is carried over automatically.
+-   **Prepared Context**: Files you have explicitly staged for the *next* message. This is cleared after each message is sent.
+
 ### Viewing Chat History
 
 To view the full history of a conversation, use the `history` subcommand.
@@ -127,7 +162,7 @@ retort history
 
 ### Managing Profiles
 
-Retort uses a profile to manage settings. Currently, this is used for setting the active chat.
+Retort uses a profile to manage settings, like the active chat and project root.
 
 ```bash
 # View the default profile
@@ -135,7 +170,12 @@ retort profile
 
 # Set the active chat tag to 'my-chat'
 retort profile --active-chat my-chat
+
+# Set the project root to the current directory
+retort profile --set-project-root .
 ```
+
+Setting a project root is a safety feature. Retort will not modify any files outside of the specified project root directory.
 
 ### Viewing Output
 

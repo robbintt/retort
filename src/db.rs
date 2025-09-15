@@ -26,15 +26,6 @@ pub fn setup(db_path_str: &str) -> Result<Connection> {
             FOREIGN KEY (parent_id) REFERENCES messages (id)
         );
 
-        CREATE TABLE IF NOT EXISTS files (
-            id INTEGER PRIMARY KEY,
-            message_id INTEGER NOT NULL,
-            path TEXT NOT NULL,
-            content TEXT NOT NULL,
-            read_only BOOLEAN NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-            FOREIGN KEY (message_id) REFERENCES messages (id)
-        );
 
         CREATE TABLE IF NOT EXISTS chat_tags (
             tag TEXT PRIMARY KEY NOT NULL,
