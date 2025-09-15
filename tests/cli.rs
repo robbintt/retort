@@ -2,8 +2,23 @@ use anyhow::Result;
 use assert_cmd::prelude::*;
 use predicates::prelude::*;
 use std::fs;
+use std::path::Path;
 use std::process::Command;
 use tempfile::tempdir;
+
+fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result<()> {
+    fs::create_dir_all(dst.as_ref())?;
+    for entry in fs::read_dir(src.as_ref())? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        if ty.is_dir() {
+            copy_dir_all(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        } else {
+            fs::copy(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        }
+    }
+    Ok(())
+}
 
 #[test]
 fn test_list_chats_format_and_logic() -> Result<()> {
@@ -361,6 +376,13 @@ fn test_send_with_postprocessor_hook() -> Result<()> {
     let home_dir = project_dir.join("home");
     fs::create_dir_all(&home_dir)?;
     let db_path = home_dir.join("test.db");
+
+    // Copy prompts directory for the test so that the templates can be found
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    copy_dir_all(
+        std::path::Path::new(manifest_dir).join("prompts"),
+        project_dir.join("prompts"),
+    )?;
 
     // Create a config file to point to our test DB
     let config_dir = home_dir.join(".retort");
