@@ -14,9 +14,10 @@ pub struct PostprocessorHook {}
 
 impl PostprocessorHook {
     fn parse_changes(&self, response: &str) -> anyhow::Result<(String, Vec<FileChange>)> {
-        // This regex captures a file path followed by a SEARCH/REPLACE block.
+        // This regex captures a file path followed by a SEARCH/REPLACE block
+        // inside a markdown code block.
         let re = Regex::new(
-            r"(?ms)^([\w\./\-_]+)\n<<<<<<< SEARCH\n(.*?)\n=======\n(.*?)\n>>>>>>> REPLACE$",
+            r"(?s)```[a-zA-Z]*\n([\w\./\-_]+)\n<<<<<<< SEARCH\n(.*?)\n=======\n(.*?)\n>>>>>>> REPLACE\n```",
         )?;
         let mut changes = Vec::new();
         let mut last_end = 0;
