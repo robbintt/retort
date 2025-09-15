@@ -448,9 +448,9 @@ fn test_context_inheritance() -> Result<()> {
         .env("MOCK_LLM", "1")
         .assert()
         .success()
-        .stdout(
-            predicate::str::contains("Inherited:\n  (empty)\nPrepared:\n  Read-Write:\n    - file1.txt")
-        );
+        .stdout(predicate::str::contains(
+            "Inherited:\n  (empty)\nPrepared:\n  Read-Write:\n    - file1.txt",
+        ));
 
     // After send, prepared stage should be empty.
     Command::cargo_bin("retort")?
@@ -458,7 +458,9 @@ fn test_context_inheritance() -> Result<()> {
         .env("HOME", &home_dir)
         .assert()
         .success()
-        .stdout(predicate::str::contains("Prepared Context (for next message):\n  (empty)"));
+        .stdout(predicate::str::contains(
+            "Prepared Context (for next message):\n  (empty)",
+        ));
 
     // 2. Stage file2, send msg2 continuing chat. Context should have file1 (inherited) and file2 (prepared).
     Command::cargo_bin("retort")?
@@ -475,9 +477,9 @@ fn test_context_inheritance() -> Result<()> {
         .env("MOCK_LLM", "1")
         .assert()
         .success()
-        .stdout(
-            predicate::str::contains("Inherited:\n  Read-Write:\n    - file1.txt\nPrepared:\n  Read-Write:\n    - file2.txt")
-        );
+        .stdout(predicate::str::contains(
+            "Inherited:\n  Read-Write:\n    - file1.txt\nPrepared:\n  Read-Write:\n    - file2.txt",
+        ));
 
     // 3. Stage file3, send msg3 but with --ignore-inherited-stage. Context should only have file3.
     Command::cargo_bin("retort")?
@@ -489,15 +491,20 @@ fn test_context_inheritance() -> Result<()> {
 
     Command::cargo_bin("retort")?
         .current_dir(temp_dir.path())
-        .args(["send", "--chat", "inherit-test", "--ignore-inherited-stage", "msg3"])
+        .args([
+            "send",
+            "--chat",
+            "inherit-test",
+            "--ignore-inherited-stage",
+            "msg3",
+        ])
         .env("HOME", &home_dir)
         .env("MOCK_LLM", "1")
         .assert()
         .success()
-        .stdout(
-            predicate::str::contains("Inherited:\n  (empty)\nPrepared:\n  Read-Write:\n    - file3.txt")
-        );
-
+        .stdout(predicate::str::contains(
+            "Inherited:\n  (empty)\nPrepared:\n  Read-Write:\n    - file3.txt",
+        ));
 
     Ok(())
 }
