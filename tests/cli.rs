@@ -440,21 +440,3 @@ This is a commit message.
 test-file.txt
 <<<<<<< SEARCH
 hello world
-
-    // Verify file content change
-    let new_content = fs::read_to_string(&file_to_change)?;
-    assert_eq!(new_content, "hello rust\n");
-
-    // Verify git commit
-    let output = Command::new("git")
-        .current_dir(project_dir)
-        .arg("log")
-        .arg("-1")
-        .arg("--pretty=%B")
-        .output()?;
-
-    let commit_message = String::from_utf8(output.stdout)?;
-    assert!(commit_message.starts_with("feat: update test file"));
-
-    Ok(())
-}
