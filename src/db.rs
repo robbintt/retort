@@ -319,6 +319,16 @@ pub fn get_message_metadata(conn: &Connection, message_id: i64) -> Result<Option
     }
 }
 
+pub fn get_parent_id(conn: &Connection, message_id: i64) -> Result<Option<i64>> {
+    let mut stmt = conn.prepare("SELECT parent_id FROM messages WHERE id = ?1")?;
+    let mut rows = stmt.query_map([message_id], |row| row.get(0))?;
+    if let Some(parent_id_result) = rows.next() {
+        Ok(parent_id_result?)
+    } else {
+        Ok(None)
+    }
+}
+
 pub fn set_project_root(conn: &Connection, name: &str, path: &str) -> Result<()> {
     conn.execute(
         "UPDATE profiles SET project_root = ?1 WHERE name = ?2",

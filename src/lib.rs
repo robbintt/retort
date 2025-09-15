@@ -292,9 +292,15 @@ pub async fn run() -> anyhow::Result<()> {
                 let mut inherited_stage: MessageMetadata = Default::default();
                 if let Some(p_id) = parent_id {
                     if !ignore_inherited_stage {
-                        if let Some(metadata_json) = db::get_message_metadata(&conn, p_id)? {
-                            if !metadata_json.is_empty() {
-                                inherited_stage = serde_json::from_str(&metadata_json)?;
+                        // The parent_id (p_id) is the previous assistant's message.
+                        // Its parent is the user message from the same turn, which holds the context metadata.
+                        if let Some(user_message_id) = db::get_parent_id(&conn, p_id)? {
+                            if let Some(metadata_json) =
+                                db::get_message_metadata(&conn, user_message_id)?
+                            {
+                                if !metadata_json.is_empty() {
+                                    inherited_stage = serde_json::from_str(&metadata_json)?;
+                                }
                             }
                         }
                     }
