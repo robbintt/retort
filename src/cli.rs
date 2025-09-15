@@ -7,6 +7,20 @@ pub struct Cli {
     pub command: Option<Command>,
 }
 
+#[derive(Parser, Debug)]
+pub struct StageArgs {
+    /// Path to a file to add or remove from the context stage.
+    pub file_path: Option<String>,
+
+    /// Stage the file as read-only.
+    #[arg(short = 'r', long, requires = "file_path")]
+    pub read_only: bool,
+
+    /// Remove the file from the context stage.
+    #[arg(long, short = 'd', requires = "file_path")]
+    pub drop: bool,
+}
+
 #[derive(Subcommand, Debug)]
 pub enum Command {
     /// List all chats
@@ -14,6 +28,8 @@ pub enum Command {
     /// Manage chat tags
     #[command(subcommand)]
     Tag(TagSubcommand),
+    /// Stage files for chat context
+    Stage(StageArgs),
     /// Manage profiles
     Profile {
         /// Set the active chat tag for the default profile

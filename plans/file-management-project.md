@@ -54,7 +54,7 @@ This phase focuses on setting up the database schema and data structures for man
 
 This phase introduces the `retort stage` command and updates the `send` command to support the new context model.
 
-- [ ] **Task 2.1: Create `stage` Subcommand.** In `src/cli.rs`, add a `Stage` subcommand. It will handle adding/removing files when a path is provided, and list the context stage when run with no arguments.
+- [x] **Task 2.1: Create `stage` Subcommand.** In `src/cli.rs`, add a `Stage` subcommand. It will handle adding/removing files when a path is provided, and list the context stage when run with no arguments.
 
   ```rust
   // In the Command enum
@@ -76,7 +76,7 @@ This phase introduces the `retort stage` command and updates the `send` command 
   }
   ```
 
-- [ ] **Task 2.2: Update `Send` Command.** In `src/cli.rs`, add an `--ignore-inherited-stage` (`-i`) flag to the `Send` command arguments. This will be used in a later phase to allow starting a chat with a clean context.
+- [x] **Task 2.2: Update `Send` Command.** In `src/cli.rs`, add an `--ignore-inherited-stage` (`-i`) flag to the `Send` command arguments. This will be used in a later phase to allow starting a chat with a clean context. (Note: This flag was already present).
 
 - [ ] **Task 2.3: Implement `stage` Command Logic.** In `src/lib.rs`, implement the logic for the `Stage` subcommand in the main `run` function.
 
