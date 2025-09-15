@@ -6,16 +6,21 @@ use std::io::{stdout, Write};
 pub mod cli;
 pub mod config;
 pub mod db;
+pub mod hooks;
 pub mod llm;
 pub mod prompt;
 
 use cli::{Cli, Command, TagSubcommand};
+use hooks::HookManager;
 
 pub async fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
     let config = config::load()?;
     let expanded_path = shellexpand::tilde(&config.database_path);
     let conn = db::setup(&expanded_path)?;
+
+    let mut hook_manager = HookManager::new();
+    hook_manager.register(Box::new(hooks::postprocessor::PostprocessorHook {}));
 
     if let Some(command) = cli.command {
         match command {
@@ -226,6 +231,8 @@ pub async fn run() -> anyhow::Result<()> {
                 } else {
                     llm::get_response(&llm_messages).await?
                 };
+
+                hook_manager.run_post_send_hooks(&assistant_response)?;
 
                 let assistant_message_id = db::add_message(
                     &conn,
