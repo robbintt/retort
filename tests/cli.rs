@@ -8,20 +8,6 @@ use tempfile::tempdir;
 
 // CLI tests with fences are in cli_fence.rs because they break ai pair programming more often.
 
-fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result<()> {
-    fs::create_dir_all(dst.as_ref())?;
-    for entry in fs::read_dir(src.as_ref())? {
-        let entry = entry?;
-        let ty = entry.file_type()?;
-        if ty.is_dir() {
-            copy_dir_all(entry.path(), dst.as_ref().join(entry.file_name()))?;
-        } else {
-            fs::copy(entry.path(), dst.as_ref().join(entry.file_name()))?;
-        }
-    }
-    Ok(())
-}
-
 #[test]
 fn test_list_chats_format_and_logic() -> Result<()> {
     let temp_dir = tempdir()?;
@@ -443,7 +429,7 @@ fn test_context_inheritance() -> Result<()> {
 
     Command::cargo_bin("retort")?
         .current_dir(temp_dir.path())
-        .args(["send", "--new", "--chat", "inherit-test", "msg1"])
+        .args(["send", "--chat", "inherit-test", "msg1"])
         .env("HOME", &home_dir)
         .env("MOCK_LLM", "1")
         .assert()
@@ -528,7 +514,7 @@ fn test_stage_command() -> Result<()> {
     let _conn = retort::db::setup(db_path.to_str().unwrap())?;
 
     // 1. `retort stage` should be empty initially.
-    let expected_empty = "Prepared Context (for next message):\n  (empty)\n";
+    let expected_empty = "Inherited Context (from active chat):\n  (empty)\n\nPrepared Context (for next message):\n  (empty)\n";
     Command::cargo_bin("retort")?
         .arg("stage")
         .env("HOME", home_dir)
@@ -553,7 +539,7 @@ fn test_stage_command() -> Result<()> {
         .stdout(predicate::str::contains("Staged file2.txt as read-only."));
 
     // 4. `retort stage` should list both files.
-    let expected_list = "Prepared Context (for next message):\n  Read-Write:\n    - file1.txt\n  Read-Only:\n    - file2.txt\n";
+    let expected_list = "Inherited Context (from active chat):\n  (empty)\n\nPrepared Context (for next message):\n  Read-Write:\n    - file1.txt\n  Read-Only:\n    - file2.txt\n";
     Command::cargo_bin("retort")?
         .arg("stage")
         .env("HOME", home_dir)
@@ -570,7 +556,7 @@ fn test_stage_command() -> Result<()> {
         .stdout(predicate::str::contains("Removed file1.txt from stage."));
 
     // 6. `retort stage` should show only the remaining file.
-    let expected_final = "Prepared Context (for next message):\n  Read-Only:\n    - file2.txt\n";
+    let expected_final = "Inherited Context (from active chat):\n  (empty)\n\nPrepared Context (for next message):\n  Read-Only:\n    - file2.txt\n";
     Command::cargo_bin("retort")?
         .arg("stage")
         .env("HOME", home_dir)

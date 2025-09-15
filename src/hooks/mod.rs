@@ -10,6 +10,12 @@ pub struct HookManager {
     hooks: Vec<Box<dyn Hook>>,
 }
 
+impl Default for HookManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HookManager {
     pub fn new() -> Self {
         Self { hooks: Vec::new() }

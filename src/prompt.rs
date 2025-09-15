@@ -4,10 +4,6 @@ use minijinja::Environment;
 use serde::Serialize;
 
 // Stubbed data from Python _build_diff_fenced_context
-const REPO_MAP: &str = "";
-const READ_ONLY_FILES: &str = "";
-const CHAT_FILES: &str = "";
-const REPO_MAP_PREFIX: &str = "The user has provided a map of the repo.";
 const READ_ONLY_FILES_PREFIX: &str = "The user has provided the following read-only files:";
 const CHAT_FILES_PREFIX: &str =
     "The user has added these files to the chat. You may propose edits to them.";
@@ -17,7 +13,6 @@ const GO_AHEAD_TIP: &str = "If the user just says something like \"ok\" or \"go 
 const LAZY_PROMPT: &str = "";
 const OVEREAGER_PROMPT: &str = "Pay careful attention to the scope of the user's request.\nDo what they ask, but no more.\nDo not improve, comment, fix or modify unrelated parts of the code in any way!";
 const SYSTEM_REMINDER: Option<&str> = None;
-const USER_LANGUAGE: Option<&str> = None;
 
 #[derive(Serialize)]
 pub struct Message {
