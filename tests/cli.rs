@@ -433,25 +433,13 @@ fn test_send_with_postprocessor_hook() -> Result<()> {
         .assert()
         .success();
 
-    let diff = r#"--- a/test-file.txt
-+++ b/test-file.txt
-@@ -1 +1 @@
--hello world
-+hello rust
-"#;
-
-    let mock_response = format!(
-        r#"feat: update test file
+    let mock_response = r#"feat: update test file
 
 This is a commit message.
 
 test-file.txt
-```diff
-{}
-```
-"#,
-        diff
-    );
+<<<<<<< SEARCH
+hello world
 
     // Run retort send. It should trigger the postprocessor hook.
     Command::cargo_bin("retort")?
