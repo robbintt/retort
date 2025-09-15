@@ -1,6 +1,7 @@
 use crate::hooks::Hook;
 use regex::Regex;
 use std::fs;
+use std::path::Path;
 use std::process::Command;
 
 #[derive(Debug)]
@@ -111,6 +112,9 @@ impl PostprocessorHook {
                 original_content.replacen(&change.search_content, &change.replace_content, 1)
             };
 
+            if let Some(parent) = Path::new(&change.path).parent() {
+                fs::create_dir_all(parent)?;
+            }
             fs::write(&change.path, new_content)?;
         }
 
