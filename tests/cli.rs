@@ -1,5 +1,6 @@
 use anyhow::Result;
 use assert_cmd::prelude::*;
+use assert_cmd::Command;
 use predicates::prelude::*;
 use std::fs;
 use tempfile::tempdir;
