@@ -2,7 +2,6 @@ use anyhow::Result;
 use assert_cmd::prelude::*;
 use predicates::prelude::*;
 use std::fs;
-use std::process::Command;
 use tempfile::tempdir;
 
 // CLI tests with fences are in cli_fence.rs because they break ai pair programming more often.
