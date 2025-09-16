@@ -593,8 +593,8 @@ fn test_send_confirm_flow() -> Result<()> {
     let mut cmd = Command::cargo_bin("retort")?;
     cmd.args(["send", "--new", "--confirm", "test prompt"])
         .env("HOME", home_dir)
-        .env("MOCK_LLM", "1")
-        .write_stdin("n\n");
+        .env("MOCK_LLM", "1");
+    cmd.write_stdin("n\n");
 
     cmd.assert()
         .success()
@@ -610,8 +610,8 @@ fn test_send_confirm_flow() -> Result<()> {
     let mut cmd = Command::cargo_bin("retort")?;
     cmd.args(["send", "--new", "--confirm", "test prompt"])
         .env("HOME", home_dir)
-        .env("MOCK_LLM", "1")
-        .write_stdin("y\n");
+        .env("MOCK_LLM", "1");
+    cmd.write_stdin("y\n");
 
     cmd.assert()
         .success()
@@ -630,8 +630,8 @@ fn test_send_confirm_flow() -> Result<()> {
     let mut cmd = Command::cargo_bin("retort")?;
     cmd.args(["send", "--new", "--confirm", "another prompt"])
         .env("HOME", home_dir)
-        .env("MOCK_LLM", "1")
-        .write_stdin("\n");
+        .env("MOCK_LLM", "1");
+    cmd.write_stdin("\n");
 
     cmd.assert()
         .success()
