@@ -573,3 +573,74 @@ fn test_stage_command() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn test_send_confirm_flow() -> Result<()> {
+    let temp_dir = tempdir()?;
+    let home_dir = temp_dir.path();
+    let db_path = home_dir.join("test.db");
+
+    let config_dir = home_dir.join(".retort");
+    fs::create_dir_all(&config_dir)?;
+    let config_path = config_dir.join("config.yaml");
+    fs::write(
+        config_path,
+        format!("database_path: {}", db_path.to_str().unwrap()),
+    )?;
+    let conn = retort::db::setup(db_path.to_str().unwrap())?;
+
+    // Test 1: Abort with 'n'
+    let mut cmd = Command::cargo_bin("retort")?;
+    cmd.args(["send", "--new", "--confirm", "test prompt"])
+        .env("HOME", home_dir)
+        .env("MOCK_LLM", "1")
+        .write_stdin("n\n");
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("PROMPT PREVIEW"))
+        .stdout(predicate::str::contains("Send Message? [Y/n]"))
+        .stdout(predicate::str::contains("Aborted."));
+
+    // Verify no messages were added
+    let leaves = retort::db::get_leaf_messages(&conn)?;
+    assert!(leaves.is_empty());
+
+    // Test 2: Proceed with 'y'
+    let mut cmd = Command::cargo_bin("retort")?;
+    cmd.args(["send", "--new", "--confirm", "test prompt"])
+        .env("HOME", home_dir)
+        .env("MOCK_LLM", "1")
+        .write_stdin("y\n");
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("PROMPT PREVIEW"))
+        .stdout(predicate::str::contains("Send Message? [Y/n]"))
+        .stdout(predicate::str::contains("Added user message with ID: 1"))
+        .stdout(predicate::str::contains("Added assistant message with ID: 2"));
+
+    // Verify messages were added
+    let leaves = retort::db::get_leaf_messages(&conn)?;
+    assert_eq!(leaves.len(), 1);
+
+    // Test 3: Proceed with default (Enter)
+    let mut cmd = Command::cargo_bin("retort")?;
+    cmd.args(["send", "--new", "--confirm", "another prompt"])
+        .env("HOME", home_dir)
+        .env("MOCK_LLM", "1")
+        .write_stdin("\n");
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("PROMPT PREVIEW"))
+        .stdout(predicate::str::contains("Send Message? [Y/n]"))
+        .stdout(predicate::str::contains("Added user message with ID: 3"))
+        .stdout(predicate::str::contains("Added assistant message with ID: 4"));
+
+    // Verify another message was added
+    let leaves = retort::db::get_leaf_messages(&conn)?;
+    assert_eq!(leaves.len(), 2);
+
+    Ok(())
+}

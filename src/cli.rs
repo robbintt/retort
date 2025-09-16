@@ -81,6 +81,10 @@ pub enum Command {
         /// Ignore the inherited file context from the parent message.
         #[arg(long, short = 'i', conflicts_with = "new")]
         ignore_inherited_stage: bool,
+
+        /// Require confirmation before sending the message.
+        #[arg(long, short = 'c')]
+        confirm: bool,
     },
 }
 

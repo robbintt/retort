@@ -355,6 +355,7 @@ pub async fn run() -> anyhow::Result<()> {
                 stream,
                 no_stream,
                 ignore_inherited_stage,
+                confirm,
             } => {
                 let profile = db::get_profile_by_name(&conn, "default")?;
                 let project_root = profile.project_root.map(PathBuf::from);
@@ -470,19 +471,20 @@ pub async fn run() -> anyhow::Result<()> {
 
                 let metadata_json = serde_json::to_string(&metadata)?;
 
-                // Add user message with metadata
-                let user_message_id =
-                    db::add_message(&conn, parent_id, "user", &prompt, Some(&metadata_json))?;
-                println!("Added user message with ID: {}", user_message_id);
-
                 // 6. Get conversation history to build prompt
-                let history = db::get_conversation_history(&conn, user_message_id)?;
-
-                let (cur_messages, done_messages) = if let Some(last) = history.last() {
-                    (vec![last.clone()], history[..history.len() - 1].to_vec())
+                let history = if let Some(p_id) = parent_id {
+                    db::get_conversation_history(&conn, p_id)?
                 } else {
-                    (Vec::new(), Vec::new())
+                    Vec::new()
                 };
+
+                let cur_user_message = db::HistoryMessage {
+                    role: "user".to_string(),
+                    content: prompt.clone(),
+                    created_at: String::new(), // Not used for prompt building
+                };
+
+                let (cur_messages, done_messages) = (vec![cur_user_message], history);
 
                 let mut llm_messages_for_prompt = prompt::build_prompt_messages(
                     done_messages,
@@ -498,6 +500,32 @@ pub async fn run() -> anyhow::Result<()> {
                 } else {
                     None
                 };
+
+                if confirm {
+                    println!("--- PROMPT PREVIEW ---");
+                    if let Some(system) = &system_prompt {
+                        println!("[system]\n{}", system);
+                        println!("---");
+                    }
+                    for msg in &llm_messages_for_prompt {
+                        println!("[{}]\n{}", msg.role, msg.content);
+                        println!("---");
+                    }
+                    print!("Send Message? [Y/n] ");
+                    stdout().flush()?;
+                    let mut input = String::new();
+                    std::io::stdin().read_line(&mut input)?;
+                    let response = input.trim().to_lowercase();
+                    if response != "y" && !response.is_empty() {
+                        println!("Aborted.");
+                        return Ok(());
+                    }
+                }
+
+                // Add user message with metadata
+                let user_message_id =
+                    db::add_message(&conn, parent_id, "user", &prompt, Some(&metadata_json))?;
+                println!("Added user message with ID: {}", user_message_id);
 
                 // Convert to LLM ChatMessage format
                 let llm_messages: Vec<ChatMessage> = llm_messages_for_prompt
