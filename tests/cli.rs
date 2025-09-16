@@ -618,7 +618,9 @@ fn test_send_confirm_flow() -> Result<()> {
         .stdout(predicate::str::contains("PROMPT PREVIEW"))
         .stdout(predicate::str::contains("Send Message? [Y/n]"))
         .stdout(predicate::str::contains("Added user message with ID: 1"))
-        .stdout(predicate::str::contains("Added assistant message with ID: 2"));
+        .stdout(predicate::str::contains(
+            "Added assistant message with ID: 2",
+        ));
 
     // Verify messages were added
     let leaves = retort::db::get_leaf_messages(&conn)?;
@@ -636,7 +638,9 @@ fn test_send_confirm_flow() -> Result<()> {
         .stdout(predicate::str::contains("PROMPT PREVIEW"))
         .stdout(predicate::str::contains("Send Message? [Y/n]"))
         .stdout(predicate::str::contains("Added user message with ID: 3"))
-        .stdout(predicate::str::contains("Added assistant message with ID: 4"));
+        .stdout(predicate::str::contains(
+            "Added assistant message with ID: 4",
+        ));
 
     // Verify another message was added
     let leaves = retort::db::get_leaf_messages(&conn)?;
