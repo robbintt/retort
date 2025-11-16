@@ -96,7 +96,25 @@ impl PostprocessorHook {
                 } else {
                     std::env::current_dir()?.join(path)
                 };
-                let canonical_path = absolute_path.canonicalize()?;
+                let canonical_path = if absolute_path.exists() {
+                    absolute_path.canonicalize()?
+                } else {
+                    // For a new file, canonicalize the parent and append the filename.
+                    let parent = absolute_path.parent().ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "Could not get parent directory for {}",
+                            absolute_path.display()
+                        )
+                    })?;
+                    if !parent.exists() {
+                        fs::create_dir_all(parent)?;
+                    }
+                    let canonical_parent = parent.canonicalize()?;
+                    let file_name = absolute_path.file_name().ok_or_else(|| {
+                        anyhow::anyhow!("Could not get file name for {}", absolute_path.display())
+                    })?;
+                    canonical_parent.join(file_name)
+                };
                 if !canonical_path.starts_with(root) {
                     anyhow::bail!(
                         "Attempted to modify file {} which is outside the project root {}.",
