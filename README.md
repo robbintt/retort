@@ -41,6 +41,14 @@ retort send "your prompt here"
 
 By default, this continues the conversation from the active chat tag. This command supports streaming output with the `--stream` flag.
 
+#### Writing Prompts in an Editor
+
+For longer prompts, you can use the `-e` or `--editor` flag to compose your message in your default editor.
+
+```bash
+retort send --editor
+```
+
 #### Starting a New Chat
 
 Use the `--new` flag to start a completely new conversation, creating a new root message.
