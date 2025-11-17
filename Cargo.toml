@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 clap = { version = "4.5.4", features = ["derive"] }
+edit = "0.1.5"
 futures = "0.3"
 llm = { version = "1.3.4", features = ["google"] }
 minijinja = { version = "2.12.0", features = ["loader", "serde"] }

@@ -647,3 +647,59 @@ fn test_send_confirm_flow() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn test_send_editor_flow() -> Result<()> {
+    let temp_dir = tempdir()?;
+    let home_dir = temp_dir.path();
+    let db_path = home_dir.join("test.db");
+
+    let config_dir = home_dir.join(".retort");
+    fs::create_dir_all(&config_dir)?;
+    let config_path = config_dir.join("config.yaml");
+    fs::write(
+        config_path,
+        format!("database_path: {}", db_path.to_str().unwrap()),
+    )?;
+    let conn = retort::db::setup(db_path.to_str().unwrap())?;
+
+    // Test 1: Write content in editor, message should be sent.
+    Command::cargo_bin("retort")?
+        .args(["send", "-e"])
+        .env("HOME", home_dir)
+        .env("MOCK_EDITOR_CONTENT", "hello from editor")
+        .env("MOCK_LLM", "1")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Added user message with ID: 1"));
+
+    // Verify message was added
+    let leaves = retort::db::get_leaf_messages(&conn)?;
+    assert_eq!(leaves.len(), 1);
+
+    // Test 2: Exit editor with empty content, should abort.
+    Command::cargo_bin("retort")?
+        .args(["send", "-e"])
+        .env("HOME", home_dir)
+        .env("MOCK_EDITOR_CONTENT", "")
+        .env("MOCK_LLM", "1")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Empty message, aborted."));
+
+    // Verify no new message was added
+    let leaves_after_abort = retort::db::get_leaf_messages(&conn)?;
+    assert_eq!(leaves_after_abort.len(), 1);
+
+    // Test 3: Providing both prompt and -e should fail
+    Command::cargo_bin("retort")?
+        .args(["send", "-e", "some prompt"])
+        .env("HOME", home_dir)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "the argument '--editor' cannot be used with '[PROMPT]'",
+        ));
+
+    Ok(())
+}
