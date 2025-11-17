@@ -56,7 +56,7 @@ pub enum Command {
     /// Send a prompt to the model
     Send {
         /// The prompt to send
-        prompt: String,
+        prompt: Option<String>,
 
         /// The parent message ID to continue from. Creates a new branch and does not update any tags.
         #[arg(long, conflicts_with_all = &["new", "chat"])]
@@ -85,6 +85,10 @@ pub enum Command {
         /// Require confirmation before sending the message.
         #[arg(long, short = 'c')]
         confirm: bool,
+
+        /// Open an editor to write the prompt.
+        #[arg(long, short = 'e', conflicts_with = "prompt")]
+        editor: bool,
     },
 }
 

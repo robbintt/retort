@@ -356,7 +356,27 @@ pub async fn run() -> anyhow::Result<()> {
                 no_stream,
                 ignore_inherited_stage,
                 confirm,
+                editor,
             } => {
+                let prompt = if editor {
+                    if let Ok(mock_content) = std::env::var("MOCK_EDITOR_CONTENT") {
+                        mock_content
+                    } else {
+                        edit::edit("")?
+                    }
+                } else {
+                    prompt.ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "Prompt must be provided either via arguments or --editor flag."
+                        )
+                    })?
+                };
+
+                if prompt.is_empty() {
+                    println!("Empty message, aborted.");
+                    return Ok(());
+                }
+
                 let profile = db::get_profile_by_name(&conn, "default")?;
                 let project_root = profile.project_root.map(PathBuf::from);
 
