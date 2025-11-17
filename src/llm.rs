@@ -21,14 +21,12 @@ pub async fn get_response_stream(
 
     // Get Google API key from environment variable.
     let api_key =
-        std::env::var("GOOGLE_API_KEY").map_err(|_| anyhow::anyhow!("GOOGLE_API_KEY not set."))?;
+        std::env::var("GEMINI_API_KEY").map_err(|_| anyhow::anyhow!("GEMINI_API_KEY not set."))?;
 
     let mut builder = LLMBuilder::new()
         .backend(LLMBackend::Google)
         .api_key(api_key)
-        .model("gemini-2.5-flash")
-        .max_tokens(8512)
-        .temperature(0.7);
+        .model("gemini-2.5-flash");
 
     if let Some(system) = system_prompt {
         builder = builder.system(system);
